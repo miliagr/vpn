@@ -1,5 +1,20 @@
 {
-  "log": {"loglevel": "warning"},
+  "log": {"loglevel": "warning", "access": "none"},
+  "stats": {},
+  "metrics": {"tag": "metrics", "listen": "127.0.0.1:11111"},
+  "policy": {
+    "system": {"statsInboundUplink": true, "statsInboundDownlink": true, "statsOutboundUplink": true, "statsOutboundDownlink": true}
+  },
+  "routing": {
+    "domainStrategy": "AsIs",
+    "rules": [
+      {
+        "type": "field",
+        "ip": ["0.0.0.0/8", "10.0.0.0/8", "100.64.0.0/10", "127.0.0.0/8", "169.254.0.0/16", "172.16.0.0/12", "192.0.0.0/24", "192.168.0.0/16", "198.18.0.0/15", "224.0.0.0/3", "::1/128", "fc00::/7", "fe80::/10", "ff00::/8"],
+        "outboundTag": "block"
+      }
+    ]
+  },
   "inbounds": [
     {
       "tag": "vless-reality-vision",
@@ -45,5 +60,8 @@
       }
     }
   ],
-  "outbounds": [{"protocol": "freedom", "tag": "direct"}]
+  "outbounds": [
+    {"protocol": "freedom", "tag": "direct"},
+    {"protocol": "blackhole", "tag": "block"}
+  ]
 }

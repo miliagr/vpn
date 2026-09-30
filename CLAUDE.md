@@ -11,7 +11,7 @@ The two files above are the source of truth for architecture, safety rules, and 
 
 - `server/xray-server.template.json` — the only Xray config template. Placeholders look like `__VLESS_UUID__` and are substituted by `scripts/render.sh` via `sed`.
 - `flake.nix`, `nix/`, `hosts/` — NixOS definition (primary). See `docs/nixos.md`. Adding a host = a `hosts/hosts.json` entry + `<NAME>_ADDR` in `.env.local`.
-- `scripts/` — plain bash (`set -euo pipefail`). NixOS run order: `preflight` → `generate-secrets` → `nix-validate` → `nix-install <host> <ssh>` (ERASES disk) → `nix-push-secrets` → `nix-check` → `make-mobile-profiles`; later changes via `nix-deploy`. `render`/`validate`/`deploy`/`check-server` are the legacy Ubuntu path (vps1/vps2 only).
+- `scripts/` — plain bash (`set -euo pipefail`). NixOS run order: `preflight` → `generate-secrets` → `nix-validate` → `nix-install <host> <ssh>` (ERASES disk) → `nix-push-secrets` → `nix-check` → `make-mobile-profiles`; later changes via `nix-deploy`; monitoring via `nix-status` (exit 1 on problems). After install root SSH is disabled: use `admin@ip`, never `root@ip`, except for `nix-install`. `render`/`validate`/`deploy`/`check-server` are the legacy Ubuntu path (vps1/vps2 only).
 - `.env.local` (git-ignored, mode 600) — all secrets and per-VPS values. Template: `.env.example`.
 - `build/` (git-ignored) — rendered server configs and `build/mobile/*.txt|png` (contain VLESS URIs).
 - `docs/amneziawg.md` — optional manual fallback notes only, not part of the automated flow.
@@ -29,6 +29,11 @@ Tests: `./tests/run.sh` (static checks, secret hygiene, script runs against a fa
 - Deployment touches real remote servers and is hard to reverse: do not run `deploy.sh` or SSH commands against a VPS without the user's explicit go-ahead for that specific host, and do VPS1 fully (deploy + check) before VPS2.
 - Refuse to deploy while `VPS*_ADDR` are RFC 5737 placeholders (`203.0.113.*`, `198.51.100.*`, `192.0.2.*`); `render.sh` already enforces this.
 - Stay within scope: no new services, UI, telemetry, or control plane (see "Changes to avoid" in AGENTS.md).
+
+## Security invariants (do not weaken without asking)
+- Inbound: only 22, 443, 8443 TCP. Monitoring (node_exporter 9100, Xray metrics 11111) stays on 127.0.0.1; never open it in the firewall or set `openFirewall = true`.
+- The Xray routing rule blackholing private/loopback ranges must stay, otherwise VPN clients can reach those localhost ports.
+- No root SSH login, no passwords, no access logs, no third-party monitoring/alerting service. `tests/test_nix.sh` asserts these.
 
 ## Tests and documentation (every commit)
 

@@ -3,7 +3,7 @@
 # Secrets travel over ssh stdin, never on a command line or in stdout.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-[[ $# -eq 2 ]] || { echo "Usage: $0 <host-name> root@host" >&2; exit 1; }
+[[ $# -eq 2 ]] || { echo "Usage: $0 <host-name> admin@host" >&2; exit 1; }
 name="$1"; target="$2"
 jq -e --arg h "$name" 'has($h)' "$ROOT/hosts/hosts.json" >/dev/null || { echo "$name is not in hosts/hosts.json" >&2; exit 1; }
 set -a; source "$ROOT/.env.local"; set +a
@@ -19,9 +19,9 @@ done
   printf 'REALITY_DEST=%s\n' "$REALITY_DEST"
   printf 'REALITY_SERVER_NAME=%s\n' "$REALITY_SERVER_NAME"
   printf 'XHTTP_PATH=%s\n' "$XHTTP_PATH"
-} | ssh "$target" 'umask 077; install -d -m 700 /var/lib/family-vpn; cat > /var/lib/family-vpn/xray.env.new'
+} | ssh "$target" 'sudo sh -c "umask 077; install -d -m 700 /var/lib/family-vpn; cat > /var/lib/family-vpn/xray.env.new"'
 
-ssh "$target" 'bash -s' <<'REMOTE'
+ssh "$target" 'sudo bash -s' <<'REMOTE'
 set -euo pipefail
 new=/var/lib/family-vpn/xray.env.new
 cur=/var/lib/family-vpn/xray.env

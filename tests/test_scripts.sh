@@ -44,4 +44,40 @@ check 'universal uses Vision flow' grep -q 'flow=xtls-rprx-vision' build/mobile/
 check 'xhttp profile uses xhttp' grep -q 'type=xhttp' build/mobile/vps2-xhttp-android.txt
 check 'profiles are named by order' grep -q '#Family%20VPN%203$' build/mobile/vps3-universal.txt
 check 'no leftover profiles beyond hosts' bash -c '[[ "$(ls build/mobile/*.txt | wc -l)" -eq 6 ]]'
+
+# nix-status.sh against a fake ssh that returns canned health output.
+cat > "$W/bin/ssh" <<'FAKE'
+#!/usr/bin/env bash
+cat >/dev/null
+case "$*" in
+  *192.0.2.3*) echo 'ssh: connect to host 192.0.2.3 port 22: Connection timed out' >&2; exit 255 ;;
+  *192.0.2.2*) want_ports=0 ;;
+  *) want_ports=1 ;;
+esac
+cat <<OUT
+xray_active=active
+xray_up=1
+port_443=1
+port_8443=$want_ports
+failed_units=0
+disk_used_percent=20
+reboot_required=0
+health_age_seconds=30
+firewall=active
+fail2ban=active
+banned_ips=0
+uptime=up 1 day
+load=0.01 0.02 0.03
+mem_available_mb=900
+OUT
+FAKE
+chmod +x "$W/bin/ssh"
+out="$(scripts/nix-status.sh vps1 2>&1)"; rc=$?
+[[ $rc -eq 0 && "$out" == *"vps1: OK"* ]] && pass 'nix-status: healthy host exits 0' || fail 'nix-status: healthy host'
+out="$(scripts/nix-status.sh vps2 2>&1)"; rc=$?
+[[ $rc -ne 0 && "$out" == *"VPN ports not listening"* ]] && pass 'nix-status: closed port is reported, exit 1' || fail 'nix-status: closed port'
+out="$(scripts/nix-status.sh vps3 2>&1)"; rc=$?
+[[ $rc -ne 0 && "$out" == *"UNREACHABLE"* ]] && pass 'nix-status: unreachable host is reported, exit 1' || fail 'nix-status: unreachable host'
+out="$(scripts/nix-status.sh --quiet vps1 2>&1)"; rc=$?
+[[ $rc -eq 0 && -z "$out" ]] && pass 'nix-status --quiet is silent when healthy' || fail 'nix-status --quiet'
 finish

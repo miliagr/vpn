@@ -23,6 +23,8 @@
             disko.nixosModules.disko
             ./nix/common.nix
             ./nix/disk.nix
+            ./nix/security.nix
+            ./nix/monitoring.nix
             ./nix/xray.nix
           ];
         })

@@ -4,6 +4,20 @@ Every commit must update this file (enforced by `.githooks/pre-commit`; enable w
 
 ## Unreleased
 
+### Security
+- New `nix/security.nix`: immutable accounts, no root SSH login, single `admin` user with key-only SSH, hardened sshd, fail2ban, default-deny firewall (22/443/8443 TCP only, no ping/UDP), sysctl and kernel-module hardening.
+- Xray unit sandboxed further (syscall filter, protected kernel/devices, restricted address families, umask 077).
+- Xray template: access log off, private/loopback/link-local/multicast destinations blackholed so clients cannot reach the server itself.
+- Day-2 scripts now use `admin@host` (sudo on the server); `nix-install.sh` still uses the provider's `root@host` for the first install only.
+
+### Added (monitoring)
+- `nix/monitoring.nix`: localhost-only node_exporter, `family-vpn-health` timer writing textfile metrics, Xray metrics on `127.0.0.1:11111`.
+- `scripts/nix-status.sh`: pull-based health summary over SSH, non-zero exit on problems; `nix-check.sh` also shows SSH policy and all listening sockets.
+- Tests: security posture assertions on the evaluated NixOS config, real `xray run -test` of the rendered template, template invariants, `nix-status.sh` against a fake ssh.
+
+### Fixed
+- `xray-render` passes `-format json`; without it the config test failed on the extensionless temp file used by `nix-push-secrets.sh`.
+
 ### Fixed
 - `services.journald.extraConfig` was removed from current NixOS, so every host failed to evaluate; use `services.journald.settings.Journal`. Found by the first real Nix evaluation.
 - `tests/test_nix.sh` now finds Nix in `/nix/var/nix/profiles/default/bin`, so it is no longer silently skipped in non-login shells.

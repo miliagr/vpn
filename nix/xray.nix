@@ -17,7 +17,7 @@ let
       [ -n "''${!v:-}" ] || { echo "xray-render: $v is not set" >&2; exit 1; }
     done
     ${pkgs.gettext}/bin/envsubst < ${template} > "$1"
-    ${pkgs.xray}/bin/xray run -test -config "$1" >/dev/null
+    ${pkgs.xray}/bin/xray run -test -format json -config "$1" >/dev/null
   '';
 in
 {
@@ -55,6 +55,23 @@ in
         ProtectSystem = "strict";
         ProtectHome = true;
         PrivateTmp = true;
+        PrivateDevices = true;
+        ProtectKernelTunables = true;
+        ProtectKernelModules = true;
+        ProtectKernelLogs = true;
+        ProtectControlGroups = true;
+        ProtectClock = true;
+        ProtectHostname = true;
+        ProtectProc = "invisible";
+        ProcSubset = "pid";
+        LockPersonality = true;
+        RestrictRealtime = true;
+        RestrictSUIDSGID = true;
+        RestrictNamespaces = true;
+        RestrictAddressFamilies = [ "AF_INET" "AF_INET6" "AF_UNIX" ];
+        SystemCallArchitectures = "native";
+        SystemCallFilter = [ "@system-service" "~@privileged" "~@resources" ];
+        UMask = "0077";
         LimitNOFILE = 65536;
         Restart = "on-failure";
         RestartSec = 5;

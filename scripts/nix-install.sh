@@ -13,4 +13,5 @@ read -r -p "Type the host name ($name) to continue: " answer
 cd "$ROOT"
 nix run github:nix-community/nixos-anywhere -- --flake ".#$name" --target-host "$target"
 echo "Installed. The host key changed: remove the old entry with ssh-keygen -R <host>."
-echo "Next: ./scripts/nix-push-secrets.sh $name $target"
+echo "Root SSH login is now disabled; use the admin user from here on."
+echo "Next: ./scripts/nix-push-secrets.sh $name admin@${target#*@}"
