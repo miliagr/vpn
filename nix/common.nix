@@ -37,5 +37,5 @@
   zramSwap.enable = true;
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
   nix.gc = { automatic = true; dates = "weekly"; options = "--delete-older-than 30d"; };
-  services.journald.extraConfig = "SystemMaxUse=200M";
+  services.journald.settings.Journal.SystemMaxUse = "200M";
 }

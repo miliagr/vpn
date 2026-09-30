@@ -14,7 +14,7 @@ nix/xray.nix         Xray systemd unit; config rendered at start from server/xra
 Secrets never enter git or the Nix store. `.env.local` holds them locally; `scripts/nix-push-secrets.sh` writes a per-host `/var/lib/family-vpn/xray.env` (root, 0600) over ssh. The unit renders and tests the config (`xray run -test`) in `ExecStartPre`, and stays skipped until that file exists.
 
 ## Local prerequisites
-Nix with flakes (`curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install`), `xray`, `jq`, `qrencode`. Run `nix flake lock` once and commit `flake.lock`.
+Nix with flakes (`curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install`), `xray`, `jq`, `qrencode`. `flake.lock` is committed; refresh it with `nix flake update`. Both hosts were evaluated against nixpkgs `nixos-unstable` (NixOS 26.11 pre-release); the unit itself has not yet run on a real server.
 
 ## First two servers
 Provision two plain Ubuntu/Debian VPS with root SSH key access, set the real `disk` in `hosts/hosts.json`, then:

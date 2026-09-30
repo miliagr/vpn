@@ -4,6 +4,11 @@ Every commit must update this file (enforced by `.githooks/pre-commit`; enable w
 
 ## Unreleased
 
+### Fixed
+- `services.journald.extraConfig` was removed from current NixOS, so every host failed to evaluate; use `services.journald.settings.Journal`. Found by the first real Nix evaluation.
+- `tests/test_nix.sh` now finds Nix in `/nix/var/nix/profiles/default/bin`, so it is no longer silently skipped in non-login shells.
+- Added `flake.lock` (pins nixpkgs and disko).
+
 ### Added
 - NixOS as the primary target: `flake.nix`, `nix/` (common, disko disk layout, Xray unit), `hosts/hosts.json` as the single host list. See `docs/nixos.md`.
 - `scripts/nix-validate.sh`, `nix-install.sh`, `nix-push-secrets.sh`, `nix-check.sh`, `nix-deploy.sh`.
