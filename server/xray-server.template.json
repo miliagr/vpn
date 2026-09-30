@@ -1,0 +1,49 @@
+{
+  "log": {"loglevel": "warning"},
+  "inbounds": [
+    {
+      "tag": "vless-reality-vision",
+      "listen": "0.0.0.0",
+      "port": __UNIVERSAL_PORT__,
+      "protocol": "vless",
+      "settings": {
+        "clients": [{"id": "__VLESS_UUID__", "flow": "xtls-rprx-vision"}],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "raw",
+        "security": "reality",
+        "realitySettings": {
+          "show": false,
+          "target": "__REALITY_DEST__",
+          "serverNames": ["__REALITY_SERVER_NAME__"],
+          "privateKey": "__REALITY_PRIVATE_KEY__",
+          "shortIds": ["__SHORT_ID__"]
+        }
+      }
+    },
+    {
+      "tag": "vless-reality-xhttp",
+      "listen": "0.0.0.0",
+      "port": __XHTTP_PORT__,
+      "protocol": "vless",
+      "settings": {
+        "clients": [{"id": "__VLESS_UUID__"}],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "xhttp",
+        "security": "reality",
+        "realitySettings": {
+          "show": false,
+          "target": "__REALITY_DEST__",
+          "serverNames": ["__REALITY_SERVER_NAME__"],
+          "privateKey": "__REALITY_PRIVATE_KEY__",
+          "shortIds": ["__SHORT_ID__"]
+        },
+        "xhttpSettings": {"path": "__XHTTP_PATH__", "mode": "auto"}
+      }
+    }
+  ],
+  "outbounds": [{"protocol": "freedom", "tag": "direct"}]
+}

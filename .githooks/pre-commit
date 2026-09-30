@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Every commit must run the tests and carry documentation:
+#  - CHANGELOG.md must be staged in every commit;
+#  - changes to scripts/, nix/, server/, hosts/, flake.nix or tests/ must also stage README.md, docs/, AGENTS.md or CLAUDE.md.
+set -euo pipefail
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+staged="$(git diff --cached --name-only)"
+[[ -n "$staged" ]] || exit 0
+
+if ! grep -qx 'CHANGELOG.md' <<<"$staged"; then
+  echo 'pre-commit: CHANGELOG.md is not staged. Describe this change under "Unreleased".' >&2
+  exit 1
+fi
+if grep -Eq '^(scripts/|nix/|server/|hosts/|tests/|flake\.nix$|\.env\.example$)' <<<"$staged" \
+   && ! grep -Eq '^(docs/|README\.md$|AGENTS\.md$|CLAUDE\.md$)' <<<"$staged"; then
+  echo 'pre-commit: behaviour changed but no documentation staged (README.md, docs/, AGENTS.md or CLAUDE.md).' >&2
+  exit 1
+fi
+exec "$ROOT/tests/run.sh"

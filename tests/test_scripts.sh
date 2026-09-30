@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Runs generate-secrets.sh and make-mobile-profiles.sh in a throwaway copy with a fake xray.
+# Adds a third host to prove the tooling scales from hosts/hosts.json alone.
+source "$(dirname "$0")/lib.sh"
+command -v jq >/dev/null || { skip 'jq missing'; finish; }
+W="$(mktemp -d)"; trap 'rm -rf "$W"' EXIT
+mkdir -p "$W/repo" "$W/bin"
+cp -R "$ROOT/scripts" "$ROOT/hosts" "$ROOT/.env.example" "$W/repo/"
+cat > "$W/bin/xray" <<'FAKE'
+#!/usr/bin/env bash
+case "$1" in
+  uuid) echo "$(openssl rand -hex 4)-1111-4111-8111-$(openssl rand -hex 6)" ;;
+  x25519) printf 'PrivateKey: %s\nPassword: %s\n' "$(openssl rand -hex 16)" "$(openssl rand -hex 16)" ;;
+  version) echo 'Xray fake' ;;
+esac
+FAKE
+chmod +x "$W/bin/xray"
+export PATH="$W/bin:$PATH"
+cd "$W/repo"
+
+jq '. + {"vps3": {"disk": "/dev/vda", "system": "x86_64-linux"}}' hosts/hosts.json > h.json && mv h.json hosts/hosts.json
+sed -i.bak 's/^VPS1_ADDR=.*/VPS1_ADDR=192.0.2.1/; s/^VPS2_ADDR=.*/VPS2_ADDR=192.0.2.2/' .env.example
+printf 'VPS3_ADDR=192.0.2.3\n' >> .env.example
+
+check 'generate-secrets runs' scripts/generate-secrets.sh
+for n in VPS1 VPS2 VPS3; do
+  for k in REALITY_PRIVATE_KEY REALITY_PUBLIC_KEY SHORT_ID; do
+    check "${n}_$k generated" grep -q "^${n}_$k=." .env.local
+  done
+done
+check 'VLESS_UUID generated' grep -q '^VLESS_UUID=.' .env.local
+check '.env.local is mode 600' bash -c '[[ "$(stat -f %Lp .env.local 2>/dev/null || stat -c %a .env.local)" == 600 ]]'
+before="$(shasum .env.local)"
+scripts/generate-secrets.sh >/dev/null
+[[ "$before" == "$(shasum .env.local)" ]] && pass 'generate-secrets is idempotent' || fail 'generate-secrets changed existing secrets'
+check 'generate-secrets does not print secrets' bash -c '! scripts/generate-secrets.sh | grep -Eq "[0-9a-f]{16}"'
+
+check 'make-mobile-profiles runs' scripts/make-mobile-profiles.sh
+for h in vps1 vps2 vps3; do
+  check "$h universal profile" test -s "build/mobile/$h-universal.txt"
+  check "$h xhttp profile" test -s "build/mobile/$h-xhttp-android.txt"
+done
+check 'universal uses Vision flow' grep -q 'flow=xtls-rprx-vision' build/mobile/vps1-universal.txt
+check 'xhttp profile uses xhttp' grep -q 'type=xhttp' build/mobile/vps2-xhttp-android.txt
+check 'profiles are named by order' grep -q '#Family%20VPN%203$' build/mobile/vps3-universal.txt
+check 'no leftover profiles beyond hosts' bash -c '[[ "$(ls build/mobile/*.txt | wc -l)" -eq 6 ]]'
+finish

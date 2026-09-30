@@ -1,0 +1,5 @@
+.env.local
+build/
+*.key
+*.pem
+.DS_Store
