@@ -31,7 +31,7 @@ Tests: `./tests/run.sh` (static checks, secret hygiene, script runs against a fa
 - Stay within scope: no new services, UI, telemetry, or control plane (see "Changes to avoid" in AGENTS.md).
 
 ## Security invariants (do not weaken without asking)
-- Inbound: only 22, 443, 8443 TCP. Monitoring (node_exporter 9100, Xray metrics 11111) stays on 127.0.0.1; never open it in the firewall or set `openFirewall = true`.
+- Inbound: 443 and 8443 TCP for everyone; SSH (22) only from `hosts/ssh_allowed_ips`. Never open 22 globally, and never empty that list (it would lock everyone out). Deploying a change to it needs the user's go-ahead, because a wrong address locks them out until they use the provider console. Monitoring (node_exporter 9100, Xray metrics 11111) stays on 127.0.0.1; never open it in the firewall or set `openFirewall = true`.
 - The Xray routing rule blackholing private/loopback ranges must stay, otherwise VPN clients can reach those localhost ports.
 - No root SSH login, no passwords, no access logs, no third-party monitoring/alerting service. `tests/test_nix.sh` asserts these.
 

@@ -1,6 +1,12 @@
 { config, lib, pkgs, ... }:
 let
   cfg = config.familyVpn;
+  sshPort = toString (builtins.head config.services.openssh.ports);
+  sshAllowed = map lib.strings.trim (lib.filter
+    (l: builtins.match "[[:space:]]*(#.*)?" l == null)
+    (lib.splitString "\n" (builtins.readFile ../hosts/ssh_allowed_ips)));
+  validSource = ip: builtins.match "[0-9a-fA-F:.]+(/[0-9]+)?" ip != null;
+  sshRule = ip: "${if lib.hasInfix ":" ip then "ip6tables" else "iptables"} -A nixos-fw -p tcp -s ${ip} --dport ${sshPort} -j nixos-fw-accept";
   blockedProtocols = [ "dccp" "sctp" "rds" "tipc" "ax25" "netrom" "rose" ];
 in
 {
@@ -20,10 +26,16 @@ in
       hashedPassword = "!";
       openssh.authorizedKeys.keyFiles = [ ../hosts/authorized_keys ];
     };
-    assertions = [{
-      assertion = lib.hasInfix "ssh-" (builtins.readFile ../hosts/authorized_keys);
-      message = "hosts/authorized_keys has no SSH public key; refusing to build a host you could not log in to.";
-    }];
+    assertions = [
+      {
+        assertion = sshAllowed != [ ] && lib.all validSource sshAllowed;
+        message = "hosts/ssh_allowed_ips must list at least one valid IP/CIDR (otherwise nobody could SSH in) and nothing else.";
+      }
+      {
+        assertion = lib.hasInfix "ssh-" (builtins.readFile ../hosts/authorized_keys);
+        message = "hosts/authorized_keys has no SSH public key; refusing to build a host you could not log in to.";
+      }
+    ];
 
     security.sudo = {
       enable = true;
@@ -37,7 +49,7 @@ in
 
     services.openssh = {
       enable = true;
-      openFirewall = true;
+      openFirewall = false; # port 22 is opened only for hosts/ssh_allowed_ips, below
       allowSFTP = false;
       settings = {
         PermitRootLogin = "no";
@@ -59,14 +71,16 @@ in
       maxretry = 4;
       bantime = "1h";
       bantime-increment = { enable = true; maxtime = "48h"; };
+      ignoreIP = sshAllowed;
       jails.sshd.settings = { enabled = true; port = "ssh"; };
     };
 
-    # Default deny inbound. Only SSH (opened by openssh), and the two VPN ports (xray.nix).
+    # Default deny inbound. SSH only from hosts/ssh_allowed_ips; the two VPN ports are opened in xray.nix.
     networking.firewall = {
       enable = true;
       allowPing = false;
       logRefusedConnections = false;
+      extraCommands = lib.concatMapStringsSep "\n" sshRule sshAllowed;
     };
 
     boot.kernel.sysctl = {

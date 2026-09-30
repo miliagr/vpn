@@ -57,7 +57,7 @@ Each VPS should have:
 - Xray-core managed by systemd (on NixOS: the `xray` unit from `nix/xray.nix`).
 - `443/tcp` open for universal VLESS/REALITY/Vision.
 - `8443/tcp` open for Android XHTTP fallback.
-- SSH open on the user's existing SSH port.
+- SSH open only to the source addresses in `hosts/ssh_allowed_ips` (NixOS firewall).
 - No unnecessary listening services.
 
 When modifying firewall rules, first inspect whether the host uses UFW, nftables, iptables, a provider firewall, or a combination. Do not lock out SSH.

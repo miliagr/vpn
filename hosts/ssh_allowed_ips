@@ -1,0 +1,3 @@
+# Source addresses allowed to reach SSH (port 22). One IPv4/IPv6 address or CIDR per line.
+# Everyone else is dropped by the firewall. If your address changes you are locked out until you use the provider console.
+46.224.80.11

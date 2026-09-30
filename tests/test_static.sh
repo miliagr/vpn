@@ -16,6 +16,8 @@ check 'host names are lowercase alnum (they become env prefixes)' \
   jq -e 'keys | all(test("^[a-z][a-z0-9]*$"))' hosts/hosts.json
 check 'every host has a disk' jq -e 'all(.[]; .disk | type == "string" and startswith("/dev/"))' hosts/hosts.json
 check 'at least two hosts' jq -e 'length >= 2' hosts/hosts.json
+check 'ssh_allowed_ips lists at least one source' grep -Evq '^[[:space:]]*(#|$)' hosts/ssh_allowed_ips
+check 'ssh_allowed_ips has only IPs/CIDRs' bash -c '! grep -Ev "^[[:space:]]*(#|\$)|^[0-9a-fA-F:.]+(/[0-9]+)?\$" hosts/ssh_allowed_ips'
 check 'authorized_keys has an SSH public key' grep -q '^ssh-' hosts/authorized_keys
 check 'authorized_keys holds no private key' bash -c '! grep -q "PRIVATE KEY" hosts/authorized_keys'
 

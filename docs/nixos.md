@@ -5,7 +5,8 @@ Every server is a NixOS system described by this flake. Hosts are listed in `hos
 ```text
 flake.nix            hosts -> nixosConfigurations
 hosts/hosts.json     host names, disk device, system (no IPs, no secrets)
-hosts/authorized_keys  public SSH keys allowed as root (public, committed)
+hosts/authorized_keys  public SSH keys of the admin user (public, committed)
+hosts/ssh_allowed_ips  source IPs/CIDRs allowed to reach SSH (committed; one per line)
 nix/common.nix       boot, BBR, GC, journald
 nix/security.nix     users, SSH, firewall, fail2ban, sysctl (see Security)
 nix/monitoring.nix   localhost-only node_exporter + health timer (see Monitoring)
@@ -51,10 +52,13 @@ The Ubuntu scripts (`render/deploy/check-server/validate`) are the legacy path a
 ## Security
 - **Accounts:** `users.mutableUsers = false`; root has no password and cannot SSH in. The only login is `admin` (wheel, passwordless sudo because no password exists; the SSH key from `hosts/authorized_keys` is the sole credential). `nix-install.sh` is the only script that uses `root@` (the provider's initial login).
 - **SSH:** key-only, `AllowUsers admin`, 3 auth tries, 20 s grace, no X11/agent forwarding, no SFTP, local TCP forwarding only (for reaching monitoring). fail2ban bans repeated failures (1 h, growing to 48 h).
-- **Firewall:** default-deny inbound; only 22 (SSH), 443 and 8443 TCP. No UDP, no ping.
+- **Firewall:** default-deny inbound; 443 and 8443 TCP are open to everyone, **SSH (22) only from the addresses in `hosts/ssh_allowed_ips`** (currently the owner's address). No UDP, no ping. fail2ban ignores the allowed addresses.
 - **Kernel:** hardened sysctl (rp_filter, no redirects/source routing, syncookies, kptr/dmesg restrict, BPF restrictions), unused network protocols disabled, kernel image protected, core dumps off.
 - **Xray:** dynamic unprivileged user, no access log, systemd sandbox (syscall filter, no devices/kernel access, restricted address families). Routing **blackholes private, loopback, link-local and multicast ranges**, so VPN clients cannot reach the server's own localhost (monitoring ports) or the provider's internal network/metadata service.
 - Xray itself warns that REALITY with `www.microsoft.com` and non-443 ports raises the chance of a GFW block; change `REALITY_DEST`/`REALITY_SERVER_NAME` or skip the 8443 profile if that matters.
+
+### Changing the allowed SSH address
+Edit `hosts/ssh_allowed_ips` (add the new address **before** removing the old one), `./scripts/nix-validate.sh`, then `./scripts/nix-deploy.sh <host> admin@ip` for each host. If your address changes before you do this you are locked out of SSH (VPN traffic keeps working); recover through the provider's web console. Every script that uses SSH (`nix-deploy/push-secrets/check/status/history/install`) must run from an allowed address; `nix-probe.sh` only needs the VPN ports. A dynamic home IP is a poor fit: use a fixed address, or allow a CIDR you control.
 
 ## Monitoring
 Self-hosted and pull-based; no third-party service, nothing reachable from the Internet. Three questions, three tools:

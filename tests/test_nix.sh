@@ -21,7 +21,13 @@ eq 'only admin may SSH' services.openssh.settings.AllowUsers '["admin"]'
 eq 'users are immutable' users.mutableUsers 'false'
 eq 'root has no password' users.users.root.hashedPassword '"!"'
 eq 'firewall enabled' networking.firewall.enable 'true'
-eq 'inbound TCP is only ssh + VPN ports' networking.firewall.allowedTCPPorts '[22,443,8443]'
+eq 'globally open TCP ports are only the VPN ports (SSH is not among them)' networking.firewall.allowedTCPPorts '[443,8443]'
+allowed="$(grep -Ev '^[[:space:]]*(#|$)' hosts/ssh_allowed_ips)"
+rules="$(nix eval --raw ".#nixosConfigurations.$h.config.networking.firewall.extraCommands" 2>/dev/null)"
+n_rules="$(grep -c 'dport 22 -j nixos-fw-accept' <<<"$rules")"
+[[ "$n_rules" == "$(wc -l <<<"$allowed" | tr -d ' ')" && -n "$allowed" ]] && pass 'one SSH accept rule per allowed source' || fail "SSH firewall rules ($n_rules) do not match hosts/ssh_allowed_ips"
+while IFS= read -r ip; do grep -q -- "-s $ip --dport 22" <<<"$rules" && pass "SSH allowed only from $ip" || fail "no SSH rule for $ip"; done <<<"$allowed"
+[[ "$(grep -c -- '--dport 22' <<<"$rules")" == "$n_rules" && "$rules" != *"-A nixos-fw -p tcp --dport 22"* ]] && pass 'no unconditional SSH rule' || fail 'unconditional SSH rule present'
 eq 'no inbound UDP' networking.firewall.allowedUDPPorts '[]'
 eq 'fail2ban enabled' services.fail2ban.enable 'true'
 eq 'node exporter on localhost' services.prometheus.exporters.node.listenAddress '"127.0.0.1"'
