@@ -57,12 +57,20 @@ The Ubuntu scripts (`render/deploy/check-server/validate`) are the legacy path a
 - Xray itself warns that REALITY with `www.microsoft.com` and non-443 ports raises the chance of a GFW block; change `REALITY_DEST`/`REALITY_SERVER_NAME` or skip the 8443 profile if that matters.
 
 ## Monitoring
-Self-hosted and pull-based; no third-party service, nothing reachable from the Internet.
-- Each host runs `node_exporter` on `127.0.0.1:9100` and a timer (`family-vpn-health`, every minute) that writes `/var/lib/family-vpn-metrics/family_vpn.prom`: xray up, ports listening, failed units, root disk %, reboot required, aggregate per-inbound byte counters from Xray's localhost metrics (`127.0.0.1:11111/debug/vars`). No per-client or per-destination data is collected.
-- `./scripts/nix-status.sh [--quiet] [host...]` SSHes to each host as `admin`, prints a summary and **exits 1 on any problem** (xray down, ports closed, failed units, firewall/fail2ban inactive, disk >= 85%, stale health timer, reboot required, unreachable). Run it from cron/launchd and alert locally on a non-zero exit.
-- Raw metrics: `ssh -L 9100:127.0.0.1:9100 admin@ip`, then open `http://127.0.0.1:9100/metrics` locally.
-- Alert delivery (mail, push) is deliberately not built in: it would need an external service or credentials. Decide that separately.
+Self-hosted and pull-based; no third-party service, nothing reachable from the Internet. Three questions, three tools:
+
+| Question | Tool | How it is measured |
+|---|---|---|
+| Is the VPN available *right now*, as a client sees it? | `./scripts/nix-probe.sh [host...]` | Opens a real VLESS+REALITY tunnel from your machine (universal and XHTTP) via a throwaway local `xray` and fetches a 204 page through it. Exit 1 on any failure. A pass from outside Russia says nothing about Russian filtering. |
+| Is each server healthy, who is online, how loaded is the network? | `./scripts/nix-status.sh [--quiet] [host...]` | SSH summary: xray/ports/firewall/fail2ban, failed units, disk, reboot needed, **online source IPs**, connections, **live network Mbit/s** (2 s sample). Exit 1 on any problem; run from cron/launchd. |
+| What happened over the last hours/days? | `./scripts/nix-history.sh <host> [hours]` | Availability %, average/peak online, peak Mbit/s and traffic volume from the per-minute history kept on the server for 7 days. |
+
+**"Online" is approximate:** the number of distinct source IPs with an established connection on the VPN ports. Devices behind one router count once, and a device switching networks briefly counts twice. The family shares one UUID, so Xray cannot tell people apart; per-person UUIDs (see `CODEX_TASKS.md`) would allow per-person counts. Only the count is stored, never addresses.
+
+On each host, `node_exporter` listens on `127.0.0.1:9100` and the `family-vpn-health` timer (every minute) writes `/var/lib/family-vpn-metrics/family_vpn.prom` (`family_vpn_up`, `family_vpn_online_source_ips`, `family_vpn_established_connections`, `family_vpn_net_{rx,tx}_bytes_total`, xray/ports/disk/reboot flags, per-inbound Xray byte counters) and appends to `history.csv` (`ts,vpn_up,online,connections,rx_bytes,tx_bytes`). No per-client or per-destination data is collected.
+
+Raw metrics: `ssh -L 9100:127.0.0.1:9100 admin@ip`, then open `http://127.0.0.1:9100/metrics`. Alert delivery (mail, push) is deliberately not built in: it would need an external service or credentials; react to the non-zero exit of `nix-status.sh`/`nix-probe.sh` locally.
 
 ## Tests and commit policy
 
-`./tests/run.sh` runs offline checks (syntax, placeholder/secret consistency, secret hygiene, script runs with a fake `xray` and a third host). `tests/test_nix.sh` evaluates every host and is skipped where Nix is absent, so run it once Nix is installed. `./scripts/install-hooks.sh` enables `.githooks/pre-commit`, which runs the tests and requires a `CHANGELOG.md` entry in every commit, plus docs when scripts/nix/server/hosts/tests change.
+`./tests/run.sh` runs offline checks (syntax, placeholder/secret consistency, secret hygiene, script runs with a fake `xray` and a third host). `tests/test_nix.sh` evaluates every host and checks the security posture (skipped where Nix is absent). `tests/test_e2e.sh` runs a real Xray server from the template plus `nix-probe.sh` against it on this machine (needs xray and internet, uses ports 14443/18443/11111; skipped otherwise). `./scripts/install-hooks.sh` enables `.githooks/pre-commit`, which runs the tests and requires a `CHANGELOG.md` entry in every commit, plus docs when scripts/nix/server/hosts/tests change.

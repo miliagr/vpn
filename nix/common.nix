@@ -22,6 +22,6 @@
   boot.tmp.cleanOnBoot = true;
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
   nix.gc = { automatic = true; dates = "weekly"; options = "--delete-older-than 30d"; };
-  services.journald.storage = "persistent";
+  services.journald.settings.Journal.Storage = "persistent";
   services.journald.settings.Journal.SystemMaxUse = "200M";
 }

@@ -4,6 +4,17 @@ Every commit must update this file (enforced by `.githooks/pre-commit`; enable w
 
 ## Unreleased
 
+### Added (availability, online users, network load)
+- `scripts/nix-probe.sh`: end-to-end availability check; opens real VLESS+REALITY tunnels (universal and XHTTP) from the local machine through a throwaway xray client.
+- `nix-status.sh` now shows online source IPs, connections and live network Mbit/s, and treats `family_vpn_up` (xray + VPN ports) as the availability signal.
+- `scripts/nix-history.sh`: availability %, average/peak online, peak network load and traffic over the last N hours.
+- Health timer now records `family_vpn_up`, `family_vpn_online_source_ips`, connection counts and interface counters, and keeps a 7-day per-minute `history.csv` (counts only, no addresses).
+- `tests/test_e2e.sh`: real Xray server from the template + `nix-probe.sh`; also asserts clients cannot reach the server's localhost through the tunnel.
+
+### Fixed
+- `services.journald.storage` renamed upstream; use `settings.Journal.Storage`.
+- `tests/test_*.sh` append (not prepend) the Nix profile to `PATH`, so they keep using the system `curl`.
+
 ### Security
 - New `nix/security.nix`: immutable accounts, no root SSH login, single `admin` user with key-only SSH, hardened sshd, fail2ban, default-deny firewall (22/443/8443 TCP only, no ping/UDP), sysctl and kernel-module hardening.
 - Xray unit sandboxed further (syscall filter, protected kernel/devices, restricted address families, umask 077).

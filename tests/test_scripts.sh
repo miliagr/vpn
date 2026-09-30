@@ -57,6 +57,7 @@ esac
 cat <<OUT
 xray_active=active
 xray_up=1
+vpn_up=1
 port_443=1
 port_8443=$want_ports
 failed_units=0
@@ -67,6 +68,10 @@ firewall=active
 fail2ban=active
 banned_ips=0
 uptime=up 1 day
+online_source_ips=2
+connections=7
+net_rx_mbit=1.50
+net_tx_mbit=0.30
 load=0.01 0.02 0.03
 mem_available_mb=900
 OUT
@@ -80,4 +85,20 @@ out="$(scripts/nix-status.sh vps3 2>&1)"; rc=$?
 [[ $rc -ne 0 && "$out" == *"UNREACHABLE"* ]] && pass 'nix-status: unreachable host is reported, exit 1' || fail 'nix-status: unreachable host'
 out="$(scripts/nix-status.sh --quiet vps1 2>&1)"; rc=$?
 [[ $rc -eq 0 && -z "$out" ]] && pass 'nix-status --quiet is silent when healthy' || fail 'nix-status --quiet'
+
+out="$(scripts/nix-status.sh vps1 2>&1)"
+[[ "$out" == *"online_source_ips=2"* && "$out" == *"net_rx_mbit=1.50"* ]] && pass 'nix-status shows online users and network load' || fail 'nix-status online/network fields'
+
+# nix-history.sh: fake ssh serves a CSV (ts,vpn_up,online,conns,rx,tx), 1 minute apart, 1 sample down, 1 gap.
+cat > "$W/bin/ssh" <<FAKE
+#!/usr/bin/env bash
+now=\$(date +%s)
+printf '%s\n' "\$((now-240)),1,1,3,1000000000,500000000" "\$((now-180)),1,3,9,1000000000,500000000" "\$((now-120)),0,0,0,1000000000,500000000" "\$((now-60)),1,2,5,1750000000,560000000"
+FAKE
+chmod +x "$W/bin/ssh"
+out="$(scripts/nix-history.sh vps1 1 2>&1)"; rc=$?
+[[ $rc -eq 0 ]] && pass 'nix-history runs' || fail "nix-history failed: $out"
+[[ "$out" == *"peak 3"* ]] && pass 'nix-history peak online users' || fail "nix-history peak online: $out"
+[[ "$out" == *"in 100.00 Mbit/s"* ]] && pass 'nix-history peak inbound load (750 MB in 60 s = 100 Mbit/s)' || fail "nix-history peak load: $out"
+[[ "$out" == *"VPN availability : 75.00%"* ]] && pass 'nix-history availability counts the down sample' || fail "nix-history availability: $out"
 finish

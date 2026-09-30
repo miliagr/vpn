@@ -21,6 +21,7 @@ val() { awk -v k="$1" 'index($0,k)==1 {print $NF; exit}' "$m" 2>/dev/null; }
 now=$(date +%s); last=$(val family_vpn_health_last_run_timestamp_seconds); last=${last:-0}
 echo "xray_active=$(systemctl is-active xray)"
 echo "xray_up=$(val family_vpn_xray_up)"
+echo "vpn_up=$(val family_vpn_up)"
 echo "port_443=$(val 'family_vpn_port_listening{port="443"}')"
 echo "port_8443=$(val 'family_vpn_port_listening{port="8443"}')"
 echo "failed_units=$(val family_vpn_failed_units)"
@@ -30,6 +31,15 @@ echo "health_age_seconds=$((now - last))"
 echo "firewall=$(systemctl is-active firewall)"
 echo "fail2ban=$(systemctl is-active fail2ban)"
 echo "banned_ips=$(sudo fail2ban-client status sshd 2>/dev/null | awk -F: '/Currently banned/ {gsub(/ /,"",$2); print $2}')"
+echo "online_source_ips=$(val family_vpn_online_source_ips)"
+echo "connections=$(val family_vpn_established_connections)"
+iface=$(ip -o route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i <= NF; i++) if ($i == "dev") {print $(i + 1); exit}}')
+if [ -n "$iface" ]; then
+  rx1=$(cat "/sys/class/net/$iface/statistics/rx_bytes"); tx1=$(cat "/sys/class/net/$iface/statistics/tx_bytes"); sleep 2
+  rx2=$(cat "/sys/class/net/$iface/statistics/rx_bytes"); tx2=$(cat "/sys/class/net/$iface/statistics/tx_bytes")
+  echo "net_rx_mbit=$(awk -v a="$rx1" -v b="$rx2" 'BEGIN {printf "%.2f", (b - a) * 8 / 2 / 1e6}')"
+  echo "net_tx_mbit=$(awk -v a="$tx1" -v b="$tx2" 'BEGIN {printf "%.2f", (b - a) * 8 / 2 / 1e6}')"
+fi
 echo "uptime=$(uptime -p)"
 echo "load=$(cut -d' ' -f1-3 /proc/loadavg)"
 echo "mem_available_mb=$(awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo)"
@@ -39,7 +49,7 @@ REMOTE
   fi
   get() { printf '%s\n' "$out" | sed -n "s/^$1=//p"; }
   problems=()
-  [[ "$(get xray_active)" == active && "$(get xray_up)" == 1 ]] || problems+=("xray not running")
+  [[ "$(get xray_active)" == active && "$(get xray_up)" == 1 && "$(get vpn_up)" == 1 ]] || problems+=("VPN down (xray not running or ports closed)")
   [[ "$(get port_443)" == 1 && "$(get port_8443)" == 1 ]] || problems+=("VPN ports not listening")
   [[ "$(get failed_units)" == 0 ]] || problems+=("failed systemd units: $(get failed_units)")
   [[ "$(get firewall)" == active ]] || problems+=("firewall inactive")
