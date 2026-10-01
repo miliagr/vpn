@@ -18,7 +18,7 @@ chmod +x "$W/bin/xray"
 export PATH="$W/bin:$PATH"
 cd "$W/repo"
 
-jq '. + {"vps3": {"disk": "/dev/vda", "system": "x86_64-linux"}}' hosts/hosts.json > h.json && mv h.json hosts/hosts.json
+jq '. + {"vps3": {"disk": "/dev/vda", "system": "x86_64-linux", "datacenter": "Hetzner FSN1", "country": "DE"}}' hosts/hosts.json > h.json && mv h.json hosts/hosts.json
 sed -i.bak 's/^VPS1_ADDR=.*/VPS1_ADDR=192.0.2.1/; s/^VPS2_ADDR=.*/VPS2_ADDR=192.0.2.2/' .env.example
 printf 'VPS3_ADDR=192.0.2.3\n' >> .env.example
 
@@ -42,7 +42,9 @@ for h in vps1 vps2 vps3; do
 done
 check 'universal uses Vision flow' grep -q 'flow=xtls-rprx-vision' build/mobile/vps1-universal.txt
 check 'xhttp profile uses xhttp' grep -q 'type=xhttp' build/mobile/vps2-xhttp-android.txt
-check 'profiles are named by order' grep -q '#Family%20VPN%203$' build/mobile/vps3-universal.txt
+check 'unlabelled host keeps the plain name' grep -q '#Family%20VPN%201$' build/mobile/vps1-universal.txt
+check 'datacenter and country are in the profile name' grep -q '#Family%20VPN%203%20-%20Hetzner%20FSN1%2C%20DE$' build/mobile/vps3-universal.txt
+check 'XHTTP name keeps the marker and the location' grep -q '#Family%20VPN%203%20XHTTP%20-%20Hetzner%20FSN1%2C%20DE$' build/mobile/vps3-xhttp-android.txt
 check 'no leftover profiles beyond hosts' bash -c '[[ "$(ls build/mobile/*.txt | wc -l)" -eq 6 ]]'
 
 # nix-status.sh against a fake ssh that returns canned health output.
@@ -86,7 +88,9 @@ out="$(scripts/nix-status.sh vps3 2>&1)"; rc=$?
 out="$(scripts/nix-status.sh --quiet vps1 2>&1)"; rc=$?
 [[ $rc -eq 0 && -z "$out" ]] && pass 'nix-status --quiet is silent when healthy' || fail 'nix-status --quiet'
 
+jq '.vps1 += {"datacenter": "Hetzner FSN1", "country": "DE"}' hosts/hosts.json > h.json && mv h.json hosts/hosts.json
 out="$(scripts/nix-status.sh vps1 2>&1)"
+[[ "$out" == *"vps1 (Hetzner FSN1, DE): OK"* ]] && pass 'nix-status labels the host with datacenter and country' || fail "nix-status label: $out"
 [[ "$out" == *"online_source_ips=2"* && "$out" == *"net_rx_mbit=1.50"* ]] && pass 'nix-status shows online users and network load' || fail 'nix-status online/network fields'
 
 # nix-history.sh: fake ssh serves a CSV (ts,vpn_up,online,conns,rx,tx), 1 minute apart, 1 sample down, 1 gap.

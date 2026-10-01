@@ -4,7 +4,7 @@ Every server is a NixOS system described by this flake. Hosts are listed in `hos
 
 ```text
 flake.nix            hosts -> nixosConfigurations
-hosts/hosts.json     host names, disk device, system (no IPs, no secrets)
+hosts/hosts.json     host names, disk device, system, optional datacenter/country (no IPs, no secrets)
 hosts/authorized_keys  public SSH keys of the admin user (public, committed)
 hosts/ssh_allowed_ips  source IPs/CIDRs allowed to reach SSH (committed; one per line)
 nix/common.nix       boot, BBR, GC, journald
@@ -42,10 +42,10 @@ cp .env.example .env.local        # set VPS1_ADDR, VPS2_ADDR
 - Update Xray: `nix flake update nixpkgs`, validate, deploy one host at a time.
 
 ## Add a third (Nth) server
-1. Add `"vps3": {"disk": "...", "system": "x86_64-linux"}` to `hosts/hosts.json`.
+1. Add `"vps3": {"disk": "...", "system": "x86_64-linux", "datacenter": "Hetzner FSN1", "country": "DE"}` to `hosts/hosts.json` (`datacenter`/`country` are optional; `country` is a two-letter code).
 2. Add `VPS3_ADDR=` to `.env.local`; run `generate-secrets.sh`.
 3. `nix-validate.sh`, `nix-install.sh vps3 ...`, `nix-push-secrets.sh vps3 ...`, `nix-check.sh ...`.
-4. `make-mobile-profiles.sh` emits `vps3-universal` and `vps3-xhttp-android` automatically ("Family VPN 3").
+4. `make-mobile-profiles.sh` emits `vps3-universal` and `vps3-xhttp-android` automatically. Profile names include the location, e.g. `Family VPN 3 - Hetzner FSN1, DE` and `Family VPN 3 XHTTP - Hetzner FSN1, DE`; without `datacenter`/`country` they are just `Family VPN 3`. Changing a name means re-importing that QR code.
 
 The Ubuntu scripts (`render/deploy/check-server/validate`) are the legacy path and still cover only vps1/vps2.
 

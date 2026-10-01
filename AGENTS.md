@@ -76,7 +76,7 @@ Before declaring success, verify:
 
 ## Client UX
 
-For parents, favor simplicity over clever automatic balancing. Give profiles names that make manual fallback obvious:
+For parents, favor simplicity over clever automatic balancing. Give profiles names that make manual fallback obvious. When `datacenter`/`country` are set in `hosts/hosts.json` they are appended (`Family VPN 1 - Hetzner FSN1, DE`):
 - `Family VPN 1`
 - `Family VPN 2`
 - `Family VPN 1 XHTTP` (Android only)

@@ -4,6 +4,9 @@ Every commit must update this file (enforced by `.githooks/pre-commit`; enable w
 
 ## Unreleased
 
+### Added
+- Optional `datacenter` and `country` per host in `hosts/hosts.json`; they are appended to mobile profile names (`Family VPN 1 - Hetzner FSN1, DE`, `Family VPN 1 XHTTP - Hetzner FSN1, DE`) and shown by `nix-status.sh`. Hosts without them keep the plain names. Tests validate the format.
+
 ### Security
 - SSH (port 22) is reachable only from the addresses listed in `hosts/ssh_allowed_ips` (initially the owner's address); the firewall no longer opens 22 globally. fail2ban ignores those addresses. Evaluation fails if the list is empty or contains anything but IPs/CIDRs.
 - Tests assert that 22 is not globally open and that each allowed source has exactly one accept rule.

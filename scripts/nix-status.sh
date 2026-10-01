@@ -13,6 +13,8 @@ if [[ $# -gt 0 ]]; then hosts=("$@"); else hosts=(); while IFS= read -r h; do ho
 rc=0
 for host in "${hosts[@]}"; do
   n="$(printf '%s' "$host" | tr '[:lower:]' '[:upper:]')"; addr_v="${n}_ADDR"
+  where="$(jq -r --arg h "$host" '[.[$h].datacenter, .[$h].country] | map(select(. != null and . != "")) | join(", ")' "$ROOT/hosts/hosts.json")"
+  label="$host"; [[ -z "$where" ]] || label="$host ($where)"
   [[ -n "${!addr_v:-}" ]] || { echo "$host: missing $addr_v in .env.local" >&2; rc=1; continue; }
   if ! out="$(ssh -o BatchMode=yes -o ConnectTimeout=10 "$ADMIN_USER@${!addr_v}" 'bash -s' 2>&1 <<'REMOTE'
 set -u
@@ -45,7 +47,7 @@ echo "load=$(cut -d' ' -f1-3 /proc/loadavg)"
 echo "mem_available_mb=$(awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo)"
 REMOTE
   )"; then
-    echo "$host: UNREACHABLE ($(printf '%s' "$out" | tail -n 1))"; rc=1; continue
+    echo "$label: UNREACHABLE ($(printf '%s' "$out" | tail -n 1))"; rc=1; continue
   fi
   get() { printf '%s\n' "$out" | sed -n "s/^$1=//p"; }
   problems=()
@@ -58,9 +60,9 @@ REMOTE
   [[ "$(get health_age_seconds)" =~ ^[0-9]+$ && "$(get health_age_seconds)" -lt 300 ]] || problems+=("health timer stale")
   [[ "$(get reboot_required)" == 1 ]] && problems+=("reboot required (new kernel)")
   if [[ ${#problems[@]} -gt 0 ]]; then
-    rc=1; echo "$host: PROBLEM: $(IFS='; '; echo "${problems[*]}")"
+    rc=1; echo "$label: PROBLEM: $(IFS='; '; echo "${problems[*]}")"
   elif [[ $quiet -eq 0 ]]; then
-    echo "$host: OK"
+    echo "$label: OK"
   fi
   [[ $quiet -eq 1 && ${#problems[@]} -eq 0 ]] || printf '%s\n' "$out" | sed 's/^/    /'
 done
