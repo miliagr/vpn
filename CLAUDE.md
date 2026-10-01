@@ -9,7 +9,7 @@ The two files above are the source of truth for architecture, safety rules, and 
 
 ## Layout
 
-- `server/xray-server.template.json` — the only Xray config template. Placeholders look like `__VLESS_UUID__` and are substituted by `scripts/render.sh` via `sed`.
+- `server/xray-server.template.json` — the only Xray config template. Placeholders look like `__VLESS_UUID__`; on NixOS `nix/xray.nix` turns them into `${VAR}` and renders at service start, the legacy `scripts/render.sh` substitutes them with `sed`.
 - `flake.nix`, `nix/`, `hosts/` — NixOS definition (primary). See `docs/nixos.md`. Adding a host = a `hosts/hosts.json` entry + `<NAME>_ADDR` in `.env.local`.
 - `scripts/` — plain bash (`set -euo pipefail`). NixOS run order: `preflight` → `generate-secrets` → `nix-validate` → `nix-install <host> <ssh>` (ERASES disk) → `nix-push-secrets` → `nix-check` → `make-mobile-profiles`; later changes via `nix-deploy`; monitoring via `nix-status` (health, online, load; exit 1 on problems), `nix-probe` (real end-to-end tunnel) and `nix-history`; `make-android-auto-profile` builds the optional Android auto-failover config (secrets inside, never print it). After install root SSH is disabled: use `admin@ip`, never `root@ip`, except for `nix-install`. `render`/`validate`/`deploy`/`check-server` are the legacy Ubuntu path (vps1/vps2 only).
 - `.env.local` (git-ignored, mode 600) — all secrets and per-VPS values. Template: `.env.example`.
@@ -22,12 +22,12 @@ Tests: `./tests/run.sh` (static checks, secret hygiene, script runs against a fa
 
 - **Never read `.env.local` or anything in `build/`** (no `cat`, `Read`, `grep`, `source`-and-echo). To check whether a value is set, test emptiness without printing it, e.g. `grep -q '^VLESS_UUID=.' .env.local`. Do the same for generated `.txt` profiles: check existence with `ls`, never contents.
 - Don't run commands whose output would include secrets (`xray x25519`, `xray uuid`, `env`, `set`, `cat build/...`). Scripts that handle secrets must write them to files, not stdout.
-- Any script change must keep the existing guarantees: validate before replacing `/usr/local/etc/xray/config.json`, back up the old config, run `xray run -test` before every restart, and stay idempotent. Keep `check-server.sh` log output UUID-redacted.
-- Adding a template placeholder requires three edits together: `.env.example`, the `need=(...)` list and `sed` line in `render.sh`, and (if it affects clients) `make-mobile-profiles.sh`.
+- Any script change must keep the existing guarantees: the Xray config is rendered and tested (`xray run -test`) before every start (NixOS: `xray-render` in `ExecStartPre`; `nix-push-secrets.sh` tests new secrets and keeps a backup before restarting), and everything stays idempotent. Legacy Ubuntu scripts: validate before replacing `/usr/local/etc/xray/config.json` and back it up. Keep check output UUID-redacted.
+- Adding a template placeholder requires edits together: `.env.example`, the `required` list in `nix/xray.nix`, the secrets written by `nix-push-secrets.sh`, legacy `render.sh`, and (if it affects clients) `scripts/lib/client-outbound.sh` and `make-mobile-profiles.sh`. `tests/test_static.sh` enforces the consistency.
 - Keep the server template free of invented syntax. It currently uses `"network": "raw"` and `"target"` (current Xray naming); if `xray run -test` rejects a field, check the installed version (`./scripts/preflight.sh`) and upstream docs before changing anything.
 - `nix-install.sh` wipes the target disk; never run it, or `nix-deploy`/`nix-push-secrets`, without explicit go-ahead for that host. `nix` may not be installed locally; if so, say the Nix code is unevaluated rather than claiming it works.
-- Deployment touches real remote servers and is hard to reverse: do not run `deploy.sh` or SSH commands against a VPS without the user's explicit go-ahead for that specific host, and do VPS1 fully (deploy + check) before VPS2.
-- Refuse to deploy while `VPS*_ADDR` are RFC 5737 placeholders (`203.0.113.*`, `198.51.100.*`, `192.0.2.*`); `render.sh` already enforces this.
+- Deployment touches real remote servers and is hard to reverse: do not run SSH commands against a VPS without the user's explicit go-ahead for that specific host, and finish one host (install, secrets, check, status, probe) before the next.
+- Refuse to deploy while `VPS*_ADDR` are RFC 5737 placeholders (`203.0.113.*`, `198.51.100.*`, `192.0.2.*`). The legacy `render.sh` enforces this; for the NixOS scripts check the target yourself.
 - Stay within scope: no new services, UI, telemetry, or control plane (see "Changes to avoid" in AGENTS.md).
 
 ## Security invariants (do not weaken without asking)

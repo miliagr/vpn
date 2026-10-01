@@ -1,9 +1,9 @@
-OPEN THIS FOLDER IN CODEX.
+Read README.md, then docs/install.md (step-by-step server installation on NixOS).
 
-Then paste:
+Using an AI agent (Codex / Claude Code): open this folder and paste:
 
 Read AGENTS.md and CODEX_TASKS.md completely and follow them.
-Prepare and deploy this private family VPN to my two VPS hosts.
+Prepare and deploy this private family VPN to my VPS hosts using the NixOS workflow.
 Keep all secrets local and never print UUIDs, REALITY private keys, short IDs, or VLESS URIs in chat.
-Use the existing scripts where possible, improve them if validation requires it, and verify each VPS before moving to the next one.
+Ask before any step that erases a disk, and verify each VPS before moving to the next one.
 At the end tell me only which QR files to import into v2rayNG on Android and Streisand on iPhone.

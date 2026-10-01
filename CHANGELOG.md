@@ -4,6 +4,10 @@ Every commit must update this file (enforced by `.githooks/pre-commit`; enable w
 
 ## Unreleased
 
+### Changed (documentation)
+- `README.md` rewritten for the current NixOS workflow (quick start, operating commands, security model, layout); the Ubuntu path is labelled legacy at the end.
+- `AGENTS.md`, `CODEX_TASKS.md`, `START_HERE.txt` and `CLAUDE.md` updated: install via `nix-install.sh`/`nix-push-secrets.sh`, verification via `nix-check/status/probe`, disk-erase confirmation, current guarantees.
+
 ### Added
 - `docs/install.md`: step-by-step server installation guide (requirements, inspection, configuration, secrets, install, verification, second server, profiles, troubleshooting); `docs/nixos.md` and `README.md` link to it.
 - Test that every `scripts/*.sh` mentioned in the docs exists.
