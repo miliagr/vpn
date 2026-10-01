@@ -49,6 +49,15 @@ cp .env.example .env.local        # set VPS1_ADDR, VPS2_ADDR
 
 The Ubuntu scripts (`render/deploy/check-server/validate`) are the legacy path and still cover only vps1/vps2.
 
+## Automatic failover (Android)
+`./scripts/make-android-auto-profile.sh [--with-xhttp]` writes `build/mobile/android-auto.json`: one Xray client config that contains every server, health-checks them every 10 s through the tunnel itself (`burstObservatory`) and sends new connections to the fastest live one (`leastPing` balancer). If a server dies, new connections move to the survivor within roughly 10-25 s; connections already open on the dead server break and are re-made by the app. If every server is down it fails closed (nothing leaks outside the VPN). No subscription server or control plane is involved. `--with-xhttp` also puts the XHTTP transports in the pool; by default only the Vision profiles are used, and the XHTTP profiles stay as manual fallbacks.
+
+- **Verified:** `tests/test_failover.sh` runs two real Xray servers from the template and a client from this generator, kills each server in turn and checks the client keeps working, and that it fails when all are down.
+- **Not verified:** importing the file into the v2rayNG app (menu names and whether the app keeps the config's own inbounds, which use v2rayNG's default local ports 10808/10809). Try it on one device first.
+- **How to import:** copy `android-auto.json` to the phone over a private channel (it contains the same secrets as the QR codes: never paste it into chats or cloud notes you do not trust), then in v2rayNG add a profile from a custom/full JSON config (file or clipboard).
+- **iPhone:** stays on the two manual profiles (`Family VPN 1/2`); Streisand support for balancing was not verified.
+- Regenerate and re-import after any change to hosts, keys or addresses.
+
 ## Security
 - **Accounts:** `users.mutableUsers = false`; root has no password and cannot SSH in. The only login is `admin` (wheel, passwordless sudo because no password exists; the SSH key from `hosts/authorized_keys` is the sole credential). `nix-install.sh` is the only script that uses `root@` (the provider's initial login).
 - **SSH:** key-only, `AllowUsers admin`, 3 auth tries, 20 s grace, no X11/agent forwarding, no SFTP, local TCP forwarding only (for reaching monitoring). fail2ban bans repeated failures (1 h, growing to 48 h).
@@ -77,4 +86,4 @@ Raw metrics: `ssh -L 9100:127.0.0.1:9100 admin@ip`, then open `http://127.0.0.1:
 
 ## Tests and commit policy
 
-`./tests/run.sh` runs offline checks (syntax, placeholder/secret consistency, secret hygiene, script runs with a fake `xray` and a third host). `tests/test_nix.sh` evaluates every host and checks the security posture (skipped where Nix is absent). `tests/test_e2e.sh` runs a real Xray server from the template plus `nix-probe.sh` against it on this machine (needs xray and internet, uses ports 14443/18443/11111; skipped otherwise). `./scripts/install-hooks.sh` enables `.githooks/pre-commit`, which runs the tests and requires a `CHANGELOG.md` entry in every commit, plus docs when scripts/nix/server/hosts/tests change.
+`./tests/run.sh` runs offline checks (syntax, placeholder/secret consistency, secret hygiene, script runs with a fake `xray` and a third host). `tests/test_nix.sh` evaluates every host and checks the security posture (skipped where Nix is absent). `tests/test_failover.sh` (about 40 s, same requirements) kills servers under a real client. `tests/test_e2e.sh` runs a real Xray server from the template plus `nix-probe.sh` against it on this machine (needs xray and internet, uses ports 14443/18443/11111; skipped otherwise). `./scripts/install-hooks.sh` enables `.githooks/pre-commit`, which runs the tests and requires a `CHANGELOG.md` entry in every commit, plus docs when scripts/nix/server/hosts/tests change.

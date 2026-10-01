@@ -2,7 +2,7 @@
 source "$(dirname "$0")/lib.sh"
 cd "$ROOT"
 
-for f in scripts/*.sh tests/*.sh .githooks/pre-commit; do
+for f in scripts/*.sh scripts/lib/*.sh tests/*.sh .githooks/pre-commit; do
   check "syntax: $f" bash -n "$f"
 done
 if command -v shellcheck >/dev/null; then

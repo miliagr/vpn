@@ -4,6 +4,14 @@ Every commit must update this file (enforced by `.githooks/pre-commit`; enable w
 
 ## Unreleased
 
+### Added (automatic failover)
+- `scripts/make-android-auto-profile.sh`: one Android client config with all servers, `burstObservatory` health checks and a `leastPing` balancer; fails closed when every server is down; `--with-xhttp` adds the XHTTP transports.
+- `scripts/lib/client-outbound.sh`: shared builder for client VLESS+REALITY outbounds; `nix-probe.sh` now uses it.
+- `tests/test_failover.sh`: real two-server failover test (kills each server in turn).
+
+### Notes
+- Importing the file into v2rayNG itself is not verified; iPhone remains manual.
+
 ### Added
 - Optional `datacenter` and `country` per host in `hosts/hosts.json`; they are appended to mobile profile names (`Family VPN 1 - Hetzner FSN1, DE`, `Family VPN 1 XHTTP - Hetzner FSN1, DE`) and shown by `nix-status.sh`. Hosts without them keep the plain names. Tests validate the format.
 

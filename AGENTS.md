@@ -82,7 +82,7 @@ For parents, favor simplicity over clever automatic balancing. Give profiles nam
 - `Family VPN 1 XHTTP` (Android only)
 - `Family VPN 2 XHTTP` (Android only)
 
-If automatic failover is later requested, implement it as an optional enhancement without making basic connectivity depend on a control plane or subscription service.
+Automatic failover exists as the optional Android-only `build/mobile/android-auto.json` (`scripts/make-android-auto-profile.sh`): a static client config with a health-checked balancer, no control plane or subscription service. Basic connectivity must keep working with the plain manual profiles; iPhone stays manual unless client support is verified.
 
 ## Changes to avoid unless explicitly requested
 
