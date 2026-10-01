@@ -4,6 +4,9 @@ Every commit must update this file (enforced by `.githooks/pre-commit`; enable w
 
 ## Unreleased
 
+### Changed
+- `hosts/ssh_allowed_ips`: SSH is now also allowed from the atlas server (a second source address), in addition to the owner's address.
+
 ### Added (automatic failover)
 - `scripts/make-android-auto-profile.sh`: one Android client config with all servers, `burstObservatory` health checks and a `leastPing` balancer; fails closed when every server is down; `--with-xhttp` adds the XHTTP transports.
 - `scripts/lib/client-outbound.sh`: shared builder for client VLESS+REALITY outbounds; `nix-probe.sh` now uses it.
