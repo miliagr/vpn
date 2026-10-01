@@ -7,15 +7,15 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 quiet=0; [[ "${1:-}" == "--quiet" ]] && { quiet=1; shift; }
 ADMIN_USER="${ADMIN_USER:-admin}"
 source "$ROOT/scripts/lib/guards.sh"
+source "$ROOT/scripts/lib/hosts.sh"
 command -v jq >/dev/null || { echo 'jq is required' >&2; exit 1; }
 set -a; source "$ROOT/.env.local"; set +a
 if [[ $# -gt 0 ]]; then hosts=("$@"); else hosts=(); while IFS= read -r h; do hosts+=("$h"); done < <(jq -r 'keys_unsorted[]' "$ROOT/hosts/hosts.json"); fi
 
 rc=0
 for host in "${hosts[@]}"; do
-  n="$(printf '%s' "$host" | tr '[:lower:]' '[:upper:]')"; addr_v="${n}_ADDR"
-  where="$(jq -r --arg h "$host" '[.[$h].datacenter, .[$h].country] | map(select(. != null and . != "")) | join(", ")' "$ROOT/hosts/hosts.json")"
-  label="$host"; [[ -z "$where" ]] || label="$host ($where)"
+  n="$(host_prefix "$host")"; addr_v="${n}_ADDR"
+  label="$host"
   [[ -n "${!addr_v:-}" ]] || { echo "$host: missing $addr_v in .env.local" >&2; rc=1; continue; }
   refuse_placeholder "${!addr_v}" || { rc=1; continue; }
   if ! out="$(ssh -o BatchMode=yes -o ConnectTimeout=10 "$ADMIN_USER@${!addr_v}" 'bash -s' 2>&1 <<'REMOTE'

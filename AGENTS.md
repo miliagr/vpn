@@ -4,7 +4,7 @@ You are maintaining a small **private family VPN** repository. The users are the
 
 ## Target outcome
 
-Deploy the same VPN stack to **independent VPS hosts running NixOS** (start with two, listed in `hosts/hosts.json`), preferably at different providers and ASNs, and generate simple mobile import profiles.
+Deploy the same VPN stack to **independent VPS hosts running NixOS** (currently one; each is an entry in `hosts/hosts.json`), preferably at different providers and ASNs, and generate simple mobile import profiles.
 
 Mobile clients:
 - Android: **v2rayNG**.
@@ -45,7 +45,7 @@ Work in this order:
 1. Read `README.md`, `docs/install.md`, `CODEX_TASKS.md`, `.env.example`, and scripts before changing anything.
 2. Check local prerequisites with `./scripts/preflight.sh` (Nix, xray, jq).
 3. If `.env.local` does not exist, copy `.env.example` to `.env.local`.
-4. Ask the user only for values that cannot be discovered locally: `VPSn_ADDR`, the disk device, datacenter/country, allowed SSH source addresses. Do not ask them to paste private keys.
+4. Ask the user only for values that cannot be discovered locally: the server name (`<datacenter>-<country>-n-<number>`) and its address, the disk device, allowed SSH source addresses. Do not ask them to paste private keys.
 5. Generate secrets locally using `./scripts/generate-secrets.sh`. This script writes secrets directly to `.env.local`, not to the output.
 6. Validate with `./scripts/nix-validate.sh` (and `./tests/run.sh`).
 7. Install one VPS at a time with `./scripts/nix-install.sh <host> root@<ip>`. **This erases the disk: get the user's explicit go-ahead for that host first.**
@@ -82,11 +82,9 @@ Before declaring success, verify:
 
 ## Client UX
 
-For parents, favor simplicity over clever automatic balancing. Give profiles names that make manual fallback obvious. When `datacenter`/`country` are set in `hosts/hosts.json` they are appended (`Family VPN 1 - Hetzner FSN1, DE`):
-- `Family VPN 1`
-- `Family VPN 2`
-- `Family VPN 1 XHTTP` (Android only)
-- `Family VPN 2 XHTTP` (Android only)
+For parents, favor simplicity over clever automatic balancing. Profile names come from the server names (`<datacenter>-<country>-n-<number>`, e.g. `aeza-de-n-1`), so the location is visible and manual fallback is obvious:
+- `Family VPN aeza-de-n-1`
+- `Family VPN aeza-de-n-1 XHTTP` (Android only)
 
 Automatic failover exists as the optional Android-only `build/mobile/android-auto.json` (`scripts/make-android-auto-profile.sh`): a static client config with a health-checked balancer, no control plane or subscription service. Basic connectivity must keep working with the plain manual profiles; iPhone stays manual unless client support is verified.
 

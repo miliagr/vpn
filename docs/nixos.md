@@ -4,7 +4,7 @@ Every server is a NixOS system described by this flake. Hosts are listed in `hos
 
 ```text
 flake.nix            hosts -> nixosConfigurations
-hosts/hosts.json     host names, disk device, system, optional datacenter/country (no IPs, no secrets)
+hosts/hosts.json     host names (`<datacenter>-<country>-n-<number>`), disk device, system (no IPs, no secrets)
 hosts/authorized_keys  public SSH keys of the admin user (public, committed)
 hosts/ssh_allowed_ips  source IPs/CIDRs allowed to reach SSH (committed; one per line)
 nix/common.nix       boot, BBR, GC, journald
@@ -19,19 +19,21 @@ Secrets never enter git or the Nix store. `.env.local` holds them locally; `scri
 ## Local prerequisites
 Nix with flakes (`curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install`), `xray`, `jq`, `qrencode`. `flake.lock` is committed; refresh it with `nix flake update`. Both hosts were evaluated against nixpkgs `nixos-unstable` (NixOS 26.11 pre-release); the unit itself has not yet run on a real server.
 
-## First two servers
-Follow [install.md](install.md): inspect the VPS, fill `hosts/hosts.json` and `.env.local`, `generate-secrets.sh`, `nix-validate.sh`, then per server `nix-install.sh` (erases the disk), `nix-push-secrets.sh`, `nix-check.sh`, `nix-status.sh`, `nix-probe.sh`; finally `make-mobile-profiles.sh`.
+## First server
+Follow [install.md](install.md): inspect the VPS, fill `hosts/hosts.json` and `.env.local`, `generate-secrets.sh`, `nix-validate.sh`, then per server `nix-install.sh` (erases the disk), `nix-push-secrets.sh`, `nix-check.sh`, `nix-status.sh`, `nix-probe.sh`; finally `make-mobile-profiles.sh`. Add further hosts the same way (see below).
 
 ## Day-2
 - Config change: edit `nix/`, `./scripts/nix-validate.sh`, `./scripts/nix-deploy.sh <host> admin@ip`, `./scripts/nix-check.sh admin@ip`. Roll back with `ssh admin@ip sudo nixos-rebuild switch --rollback`.
 - Rotate secrets: clear the fields in `.env.local`, rerun `generate-secrets.sh`, `nix-push-secrets.sh` per host, regenerate profiles and re-import QR codes.
 - Update Xray: `nix flake update nixpkgs`, validate, deploy one host at a time.
 
-## Add a third (Nth) server
-1. Add `"vps3": {"disk": "...", "system": "x86_64-linux", "datacenter": "Hetzner FSN1", "country": "DE"}` to `hosts/hosts.json` (`datacenter`/`country` are optional; `country` is a two-letter code).
-2. Add `VPS3_ADDR=` to `.env.local`; run `generate-secrets.sh`.
-3. `nix-validate.sh`, `nix-install.sh vps3 ...`, `nix-push-secrets.sh vps3 ...`, `nix-check.sh ...`.
-4. `make-mobile-profiles.sh` emits `vps3-universal` and `vps3-xhttp-android` automatically. Profile names include the location, e.g. `Family VPN 3 - Hetzner FSN1, DE` and `Family VPN 3 XHTTP - Hetzner FSN1, DE`; without `datacenter`/`country` they are just `Family VPN 3`. Changing a name means re-importing that QR code.
+## Add another server
+1. Pick the name `<datacenter>-<country>-n-<number>` (for example `hetzner-fi-n-1`) and add it to `hosts/hosts.json`: `"hetzner-fi-n-1": {"disk": "...", "system": "x86_64-linux"}`. The name is also the profile name, so it shows where the server is.
+2. Add `HETZNER_FI_N_1_ADDR=` to `.env.local` (name upper-cased, `-` replaced by `_`); run `generate-secrets.sh`.
+3. `nix-validate.sh`, `nix-install.sh hetzner-fi-n-1 ...`, `nix-push-secrets.sh hetzner-fi-n-1 ...`, `nix-check.sh ...`.
+4. `make-mobile-profiles.sh` emits `hetzner-fi-n-1-universal` and `hetzner-fi-n-1-xhttp-android` automatically, named `Family VPN hetzner-fi-n-1` and `Family VPN hetzner-fi-n-1 XHTTP`.
+
+Renaming a host changes its profile name (re-import that QR code) and its `.env.local` variable prefix (rename the variables too).
 
 ## Automatic failover (Android)
 `./scripts/make-android-auto-profile.sh [--with-xhttp]` writes `build/mobile/android-auto.json`: one Xray client config that contains every server, health-checks them every 10 s through the tunnel itself (`burstObservatory`) and sends new connections to the fastest live one (`leastPing` balancer). If a server dies, new connections move to the survivor within roughly 10-25 s; connections already open on the dead server break and are re-made by the app. If every server is down it fails closed (nothing leaks outside the VPN). No subscription server or control plane is involved. `--with-xhttp` also puts the XHTTP transports in the pool; by default only the Vision profiles are used, and the XHTTP profiles stay as manual fallbacks.
@@ -39,7 +41,7 @@ Follow [install.md](install.md): inspect the VPS, fill `hosts/hosts.json` and `.
 - **Verified:** `tests/test_failover.sh` runs two real Xray servers from the template and a client from this generator, kills each server in turn and checks the client keeps working, and that it fails when all are down.
 - **Not verified:** importing the file into the v2rayNG app (menu names and whether the app keeps the config's own inbounds, which use v2rayNG's default local ports 10808/10809). Try it on one device first.
 - **How to import:** copy `android-auto.json` to the phone over a private channel (it contains the same secrets as the QR codes: never paste it into chats or cloud notes you do not trust), then in v2rayNG add a profile from a custom/full JSON config (file or clipboard).
-- **iPhone:** stays on the two manual profiles (`Family VPN 1/2`); Streisand support for balancing was not verified.
+- **iPhone:** stays on the manual universal profiles; Streisand support for balancing was not verified.
 - Regenerate and re-import after any change to hosts, keys or addresses.
 
 ## Security

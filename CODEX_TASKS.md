@@ -10,7 +10,7 @@ This file is the operational checklist for an AI coding agent.
 - Check `.env.local` only for emptiness (for example `grep -q '^VLESS_UUID=.' .env.local`); never echo it to chat/output.
 - Confirm every `VPSn_ADDR` is a real address, not one of the RFC 5737 examples (`203.0.113.0/24`, `198.51.100.0/24`, `192.0.2.0/24`). Stop if it is a placeholder.
 - Confirm SSH access as root to each fresh VPS with a harmless command, and collect `lsblk`, `free -m`, `ip -4 addr`, `ip route`.
-- Set `disk` (and optional `datacenter`/`country`) for each host in `hosts/hosts.json`; confirm `hosts/ssh_allowed_ips` and `hosts/authorized_keys`.
+- Name each host `<datacenter>-<country>-n-<number>` (e.g. `aeza-de-n-1`) and set its `disk` in `hosts/hosts.json`; confirm `hosts/ssh_allowed_ips` and `hosts/authorized_keys`.
 
 ## Phase 2 — local secrets and validation
 
@@ -19,17 +19,17 @@ This file is the operational checklist for an AI coding agent.
 - Run `./scripts/nix-validate.sh` and `./tests/run.sh`.
 - If validation fails because of Xray/NixOS version drift, fix the code for the locally installed versions and validate again.
 
-## Phase 3 — VPS1
+## Phase 3 — the first host
 
 - Get the user's explicit go-ahead: the next step erases the disk.
-- `./scripts/nix-install.sh vps1 root@<ip>`, then `ssh-keygen -R <ip>`.
-- `./scripts/nix-push-secrets.sh vps1 admin@<ip>`.
-- `./scripts/nix-check.sh admin@<ip>`, `./scripts/nix-status.sh vps1`, `./scripts/nix-probe.sh vps1`.
-- Do not continue to VPS2 unless all of them pass.
+- `./scripts/nix-install.sh <host> root@<ip>`, then `ssh-keygen -R <ip>`.
+- `./scripts/nix-push-secrets.sh <host> admin@<ip>`.
+- `./scripts/nix-check.sh admin@<ip>`, `./scripts/nix-status.sh <host>`, `./scripts/nix-probe.sh <host>`.
+- Do not continue to another host unless all of them pass.
 
-## Phase 4 — VPS2 (and any further host)
+## Phase 4 — further hosts (optional)
 
-- Repeat Phase 3 for the next host. Keep hosts independent; no host may depend on another.
+- Only when the user adds another server: add it to `hosts/hosts.json` and `.env.local`, repeat Phase 3 for it. Keep hosts independent; no host may depend on another.
 
 ## Phase 5 — phone profiles
 
@@ -39,38 +39,29 @@ Run:
 ./scripts/make-mobile-profiles.sh
 ```
 
-Expected output (one pair per host):
+Expected output (one pair per host; shown for aeza-de-n-1):
 
 ```text
-build/mobile/vps1-universal.png
-build/mobile/vps2-universal.png
-build/mobile/vps1-xhttp-android.png
-build/mobile/vps2-xhttp-android.png
+build/mobile/aeza-de-n-1-universal.png
+build/mobile/aeza-de-n-1-xhttp-android.png
 ```
 
-Optionally `./scripts/make-android-auto-profile.sh` writes `build/mobile/android-auto.json` (secrets inside; never print it).
+With two or more hosts, `./scripts/make-android-auto-profile.sh` also writes `build/mobile/android-auto.json` (secrets inside; never print it).
 
 If `qrencode` is unavailable, install it locally or leave `.txt` profile files in place and report that PNG creation remains.
 
 ### Android / v2rayNG
 
-Import in this order:
-1. `vps1-universal.png`
-2. `vps2-universal.png`
-3. `vps1-xhttp-android.png`
-4. `vps2-xhttp-android.png`
+Import, per host in `hosts/hosts.json` order: `<host>-universal.png`, then all `<host>-xhttp-android.png`.
 
 ### iPhone / Streisand
 
-Import only:
-1. `vps1-universal.png`
-2. `vps2-universal.png`
+Import only the `<host>-universal.png` files.
 
 ## Phase 6 — smoke test
 
 Ask the user to test from a Russian mobile/ISP network if available. A successful test should include:
-- one universal profile through VPS1;
-- one universal profile through VPS2;
+- one universal profile through each host;
 - Android XHTTP fallback if Android is available.
 
 Do not treat a successful test from a non-Russian network as proof that the setup works through Russian filtering.

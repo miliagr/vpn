@@ -15,7 +15,8 @@ done
 W="$(mktemp -d)"; PIDS=()
 trap 'for p in "${PIDS[@]:-}"; do kill "$p" 2>/dev/null; done; rm -rf "$W"' EXIT
 mkdir -p "$W/repo" "$W/bin"; ln -s "$X" "$W/bin/xray"
-cp -R "$ROOT/scripts" "$ROOT/hosts" "$W/repo/"
+cp -R "$ROOT/scripts" "$W/repo/"; mkdir "$W/repo/hosts"
+echo '{"aeza-de-n-1": {"disk": "/dev/vda", "system": "x86_64-linux"}, "hetzner-fi-n-1": {"disk": "/dev/vda", "system": "x86_64-linux"}}' > "$W/repo/hosts/hosts.json"
 keys="$("$X" x25519)"
 priv="$(awk '/PrivateKey/ {print $NF}' <<<"$keys")"; pub="$(awk '/Password|PublicKey/ {print $NF; exit}' <<<"$keys")"
 uuid="$("$X" uuid)"; sid=0123456789abcdef
@@ -30,12 +31,12 @@ A="$(start_server a)"; B="$(start_server b)"; PIDS=("$A" "$B")
 wait_port 14443 && wait_port 14444 && pass 'both servers are up' || fail 'servers did not start'
 
 cat > "$W/repo/.env.local" <<ENV
-VPS1_ADDR=127.0.0.1
-VPS2_ADDR=127.0.0.1
-VPS1_REALITY_PUBLIC_KEY=$pub
-VPS2_REALITY_PUBLIC_KEY=$pub
-VPS1_SHORT_ID=$sid
-VPS2_SHORT_ID=$sid
+AEZA_DE_N_1_ADDR=127.0.0.1
+HETZNER_FI_N_1_ADDR=127.0.0.1
+AEZA_DE_N_1_REALITY_PUBLIC_KEY=$pub
+HETZNER_FI_N_1_REALITY_PUBLIC_KEY=$pub
+AEZA_DE_N_1_SHORT_ID=$sid
+HETZNER_FI_N_1_SHORT_ID=$sid
 VLESS_UUID=$uuid
 REALITY_SERVER_NAME=www.gstatic.com
 UNIVERSAL_PORT=14443
@@ -52,7 +53,7 @@ check 'pool has both servers' jq -e '[.outbounds[] | select(.tag | startswith("v
 check 'uses a leastPing balancer with health checks' jq -e '.routing.balancers[0].strategy.type == "leastPing" and (.burstObservatory.subjectSelector == ["vpn-"])' "$cfg"
 
 # Same host, different ports: second server's outbound points at 14444; use test-only SOCKS port.
-jq '(.outbounds[] | select(.tag == "vpn-vps2-universal") | .settings.port) = 14444 | .inbounds[0].port = 20808 | .inbounds[1].port = 20809 | .burstObservatory.pingConfig.interval = "5s"' "$cfg" > "$W/client.json"
+jq '(.outbounds[] | select(.tag == "vpn-hetzner-fi-n-1-universal") | .settings.port) = 14444 | .inbounds[0].port = 20808 | .inbounds[1].port = 20809 | .burstObservatory.pingConfig.interval = "5s"' "$cfg" > "$W/client.json"
 "$X" run -format json -config "$W/client.json" >"$W/client.log" 2>&1 & C=$!; PIDS+=("$C")
 wait_port 20808 || fail 'client did not start'
 fetch() { curl -sS -o /dev/null --max-time 10 -x socks5h://127.0.0.1:20808 -w '%{http_code}' https://www.gstatic.com/generate_204 2>/dev/null; }

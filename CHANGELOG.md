@@ -4,6 +4,18 @@ Every commit must update this file (enforced by `.githooks/pre-commit`; enable w
 
 ## Unreleased
 
+### Changed (server naming)
+- Servers are named `<datacenter>-<country>-n-<number>` (first one: `aeza-de-n-1`). The name is the key in `hosts/hosts.json`, the profile name (`Family VPN aeza-de-n-1`, `... XHTTP`) and, upper-cased with `-` -> `_`, the variable prefix in `.env.local` (`AEZA_DE_N_1_ADDR`). A test enforces the pattern.
+- New `scripts/lib/hosts.sh` (`host_prefix`) used by all scripts that read per-host variables.
+- Removed the optional `datacenter`/`country` fields and their handling: the name carries that information.
+- Tests build their own sandbox hosts (hyphenated names) instead of relying on the real host list.
+- `.env.local` keys of the first server migrated from `VPS1_*` to `AEZA_DE_N_1_*`; unused `VPS2_*` entries removed.
+
+### Changed (one server for now)
+- `hosts/hosts.json` lists only `vps1`; `.env.example` drops the VPS2 lines (add them when a second server exists). Tests require at least one host and add vps2/vps3 themselves in their sandbox.
+- Docs (README, install guide, nixos.md, CODEX_TASKS, AGENTS, CLAUDE) describe the one-server state and the steps for adding more.
+- `make-android-auto-profile.sh` notes when the pool has a single server (nothing to fail over to).
+
 ### Removed
 - The Ubuntu path (`render.sh`, `validate.sh`, `deploy.sh`, `check-server.sh`) and its docs; the NixOS workflow replaces it. `preflight.sh` now requires `nix` and `curl` and no longer checks `scp`.
 

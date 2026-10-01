@@ -12,12 +12,10 @@ else
 fi
 
 check 'hosts.json is valid JSON' jq -e . hosts/hosts.json
-check 'host names are lowercase alnum (they become env prefixes)' \
-  jq -e 'keys | all(test("^[a-z][a-z0-9]*$"))' hosts/hosts.json
-check 'country, when set, is an ISO-style code' jq -e 'all(.[]; (.country // "AA") | test("^[A-Z]{2}$"))' hosts/hosts.json
-check 'datacenter, when set, uses plain characters (it ends up in profile names)' jq -e 'all(.[]; (.datacenter // "x") | test("^[A-Za-z0-9][A-Za-z0-9 ._-]*$"))' hosts/hosts.json
+check 'host names follow <datacenter>-<country>-n-<number> (they become env prefixes and profile names)' \
+  jq -e 'keys | all(test("^[a-z0-9]+-[a-z]{2}-n-[0-9]+$"))' hosts/hosts.json
 check 'every host has a disk' jq -e 'all(.[]; .disk | type == "string" and startswith("/dev/"))' hosts/hosts.json
-check 'at least two hosts' jq -e 'length >= 2' hosts/hosts.json
+check 'at least one host' jq -e 'length >= 1' hosts/hosts.json
 check 'ssh_allowed_ips lists at least one source' grep -Evq '^[[:space:]]*(#|$)' hosts/ssh_allowed_ips
 check 'ssh_allowed_ips has only IPs/CIDRs' bash -c '! grep -Ev "^[[:space:]]*(#|\$)|^[0-9a-fA-F:.]+(/[0-9]+)?\$" hosts/ssh_allowed_ips'
 check 'authorized_keys has an SSH public key' grep -q '^ssh-' hosts/authorized_keys

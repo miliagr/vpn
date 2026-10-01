@@ -5,6 +5,7 @@ ENV="$ROOT/.env.local"
 TEMPLATE="$ROOT/.env.example"
 command -v xray >/dev/null || { echo 'xray is required (macOS: brew install xray)' >&2; exit 1; }
 command -v openssl >/dev/null || { echo 'openssl is required' >&2; exit 1; }
+source "$ROOT/scripts/lib/hosts.sh"
 command -v jq >/dev/null || { echo 'jq is required' >&2; exit 1; }
 [[ -f "$ENV" ]] || cp "$TEMPLATE" "$ENV"
 chmod 600 "$ENV"
@@ -28,7 +29,7 @@ if [[ -z "$(get_value VLESS_UUID)" ]]; then
 fi
 
 while IFS= read -r host; do
-  n="$(printf '%s' "$host" | tr '[:lower:]' '[:upper:]')"
+  n="$(host_prefix "$host")"
   pk="${n}_REALITY_PRIVATE_KEY"
   pub="${n}_REALITY_PUBLIC_KEY"
   sid="${n}_SHORT_ID"

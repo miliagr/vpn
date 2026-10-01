@@ -12,7 +12,8 @@ curl -fsS --max-time 15 -o /dev/null https://www.gstatic.com/generate_204 || { s
 W="$(mktemp -d)"; SPID=""
 trap '[[ -n "$SPID" ]] && kill "$SPID" 2>/dev/null; rm -rf "$W"' EXIT
 mkdir -p "$W/repo" "$W/bin"; ln -s "$X" "$W/bin/xray"
-cp -R "$ROOT/scripts" "$ROOT/hosts" "$W/repo/"
+cp -R "$ROOT/scripts" "$W/repo/"; mkdir "$W/repo/hosts"
+echo '{"aeza-de-n-1": {"disk": "/dev/vda", "system": "x86_64-linux"}}' > "$W/repo/hosts/hosts.json"
 keys="$("$X" x25519)"
 priv="$(awk '/PrivateKey/ {print $NF}' <<<"$keys")"; pub="$(awk '/Password|PublicKey/ {print $NF; exit}' <<<"$keys")"
 uuid="$("$X" uuid)"; sid=0123456789abcdef
@@ -23,9 +24,9 @@ check 'server from the real template is listening on both ports' bash -c '(exec 
 check 'Xray metrics answer on localhost' bash -c "curl -fsS --max-time 3 http://127.0.0.1:11111/debug/vars | jq -e '.stats'"
 
 cat > "$W/repo/.env.local" <<ENV
-VPS1_ADDR=127.0.0.1
-VPS1_REALITY_PUBLIC_KEY=$pub
-VPS1_SHORT_ID=$sid
+AEZA_DE_N_1_ADDR=127.0.0.1
+AEZA_DE_N_1_REALITY_PUBLIC_KEY=$pub
+AEZA_DE_N_1_SHORT_ID=$sid
 VLESS_UUID=$uuid
 REALITY_SERVER_NAME=www.gstatic.com
 UNIVERSAL_PORT=14443
@@ -33,19 +34,19 @@ XHTTP_PORT=18443
 XHTTP_PATH=/api/v1/sync
 ENV
 export PATH="$W/bin:$PATH"
-out="$("$W/repo/scripts/nix-probe.sh" vps1 2>&1)"; rc=$?
+out="$("$W/repo/scripts/nix-probe.sh" aeza-de-n-1 2>&1)"; rc=$?
 echo "$out" | sed 's/^/    /'
-[[ "$out" == *"vps1 universal: OK"* ]] && pass 'probe: VLESS+REALITY+Vision tunnel works end to end' || fail 'probe: universal tunnel'
-[[ "$out" == *"vps1 xhttp: OK"* ]] && pass 'probe: VLESS+XHTTP+REALITY tunnel works end to end' || fail 'probe: xhttp tunnel'
+[[ "$out" == *"aeza-de-n-1 universal: OK"* ]] && pass 'probe: VLESS+REALITY+Vision tunnel works end to end' || fail 'probe: universal tunnel'
+[[ "$out" == *"aeza-de-n-1 xhttp: OK"* ]] && pass 'probe: VLESS+XHTTP+REALITY tunnel works end to end' || fail 'probe: xhttp tunnel'
 [[ $rc -eq 0 ]] && pass 'probe exits 0 when everything works' || fail 'probe exit code'
 check 'probe output contains no UUID' bash -c '! grep -Eq "[0-9a-f]{8}-[0-9a-f]{4}-" <<<"$0"' "$out"
 
 # Through the tunnel, the server's own localhost (Xray metrics) must be unreachable: the routing rule blackholes it.
 check 'sanity: metrics are reachable directly' curl -fsS --max-time 3 -o /dev/null http://127.0.0.1:11111/debug/vars
-out="$(PROBE_URL=http://127.0.0.1:11111/debug/vars PROBE_EXPECT=200 "$W/repo/scripts/nix-probe.sh" vps1 2>&1)"; rc=$?
-[[ $rc -ne 0 && "$out" == *"vps1 universal: FAIL"* && "$out" == *"vps1 xhttp: FAIL"* ]] \
+out="$(PROBE_URL=http://127.0.0.1:11111/debug/vars PROBE_EXPECT=200 "$W/repo/scripts/nix-probe.sh" aeza-de-n-1 2>&1)"; rc=$?
+[[ $rc -ne 0 && "$out" == *"aeza-de-n-1 universal: FAIL"* && "$out" == *"aeza-de-n-1 xhttp: FAIL"* ]] \
   && pass 'clients cannot reach the server localhost through the VPN (both transports)' || fail "localhost reachable through the tunnel: $out"
 kill "$SPID" 2>/dev/null; wait "$SPID" 2>/dev/null; SPID=""
-out="$("$W/repo/scripts/nix-probe.sh" vps1 2>&1)"; rc=$?
+out="$("$W/repo/scripts/nix-probe.sh" aeza-de-n-1 2>&1)"; rc=$?
 [[ $rc -ne 0 && "$out" == *"FAIL"* ]] && pass 'probe reports failure and exits 1 when the server is down' || fail 'probe against a dead server'
 finish

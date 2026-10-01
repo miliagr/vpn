@@ -41,10 +41,10 @@ Check:
 
 ## 2. Describe the server in the repository
 
-1. `.env.local` (git-ignored; `cp .env.example .env.local` if missing): set `VPS1_ADDR` (or `VPSn_ADDR`) to the server's IP.
-2. `hosts/hosts.json`: set `disk`, and optionally `datacenter` and `country`; they become part of the profile names (`Family VPN 1 - Hetzner FSN1, DE`):
+1. `.env.local` (git-ignored; `cp .env.example .env.local` if missing): set `<NAME>_ADDR` to the server's IP, where `<NAME>` is the host name upper-cased with `-` replaced by `_` (`aeza-de-n-1` -> `AEZA_DE_N_1_ADDR`).
+2. `hosts/hosts.json`: the key is the server name `<datacenter>-<country>-n-<number>` (it also becomes the profile name, `Family VPN aeza-de-n-1`); set `disk`:
    ```json
-   "vps1": {"disk": "/dev/vda", "system": "x86_64-linux", "datacenter": "Hetzner FSN1", "country": "DE"}
+   "aeza-de-n-1": {"disk": "/dev/vda", "system": "x86_64-linux"}
    ```
 3. `hosts/authorized_keys` must contain the public key you will log in with; `hosts/ssh_allowed_ips` the address(es) you will log in from. Both are checked at build time (an empty list refuses to build, so you cannot lock everyone out by accident).
 4. Commit the changes (the pre-commit hook runs the tests and requires a `CHANGELOG.md` entry and docs; see [nixos.md](nixos.md#tests-and-commit-policy)).
@@ -62,7 +62,7 @@ Back up `.env.local` (password manager). Losing it means new keys and re-importi
 ## 4. Install (erases the disk)
 
 ```bash
-./scripts/nix-install.sh vps1 root@SERVER_IP
+./scripts/nix-install.sh aeza-de-n-1 root@SERVER_IP
 ```
 You must type the host name to confirm. nixos-anywhere then:
 1. logs in as root and boots a small NixOS installer into RAM (`kexec`);
@@ -78,7 +78,7 @@ Xray is installed but does not start yet; it waits for its secrets.
 ## 5. Send the secrets and start Xray
 
 ```bash
-./scripts/nix-push-secrets.sh vps1 admin@SERVER_IP
+./scripts/nix-push-secrets.sh aeza-de-n-1 admin@SERVER_IP
 ```
 This copies the host's secrets from `.env.local` to `/var/lib/family-vpn/xray.env` (root-only, never in git or the Nix store), renders the config, runs `xray run -test`, and only then restarts Xray. A bad value keeps the previous file.
 
@@ -86,23 +86,22 @@ This copies the host's secrets from `.env.local` to `/var/lib/family-vpn/xray.en
 
 ```bash
 ./scripts/nix-check.sh admin@SERVER_IP    # system, xray active, ports 443/8443 listening, SSH policy
-./scripts/nix-status.sh vps1              # health summary; exit code 1 on any problem
-./scripts/nix-probe.sh vps1               # real tunnel from your Mac (universal and XHTTP)
+./scripts/nix-status.sh aeza-de-n-1              # health summary; exit code 1 on any problem
+./scripts/nix-probe.sh aeza-de-n-1               # real tunnel from your Mac (universal and XHTTP)
 ```
 All three must pass before you continue. A passing probe from outside Russia says nothing about reachability through Russian filtering: test from a Russian mobile network too.
 
-## 7. The second server, then phone profiles
-
-Repeat steps 1-6 for `vps2` (`./scripts/nix-install.sh vps2 root@IP2`, and so on). Then:
+## 7. Phone profiles
 
 ```bash
 ./scripts/make-mobile-profiles.sh          # QR codes in build/mobile/
-./scripts/make-android-auto-profile.sh     # optional: Android auto-failover config
 ```
-- Android (v2rayNG): all four QR codes (`vps*-universal.png`, `vps*-xhttp-android.png`), or the auto-failover config.
-- iPhone (Streisand): only the two `vps*-universal.png`.
+- Android (v2rayNG): the `*-universal.png` and `*-xhttp-android.png` codes of every host.
+- iPhone (Streisand): only the `*-universal.png` codes.
 
-Never paste QR contents, VLESS links or the auto-failover JSON into chats or tickets.
+Never paste QR contents, VLESS links or generated JSON into chats or tickets.
+
+**More servers later:** add the host to `hosts/hosts.json` and `VPSn_ADDR` to `.env.local`, then repeat steps 1-6 for it and rerun `make-mobile-profiles.sh`. With two or more servers `./scripts/make-android-auto-profile.sh` builds the Android auto-failover config (see [nixos.md](nixos.md#automatic-failover-android)). With one server there is nothing to fail over to, so switching is not needed.
 
 ## Troubleshooting
 

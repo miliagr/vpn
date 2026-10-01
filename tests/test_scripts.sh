@@ -5,7 +5,7 @@ source "$(dirname "$0")/lib.sh"
 command -v jq >/dev/null || { skip 'jq missing'; finish; }
 W="$(mktemp -d)"; trap 'rm -rf "$W"' EXIT
 mkdir -p "$W/repo" "$W/bin"
-cp -R "$ROOT/scripts" "$ROOT/hosts" "$ROOT/.env.example" "$W/repo/"
+cp -R "$ROOT/scripts" "$W/repo/"; mkdir "$W/repo/hosts"
 cat > "$W/bin/xray" <<'FAKE'
 #!/usr/bin/env bash
 case "$1" in
@@ -18,12 +18,28 @@ chmod +x "$W/bin/xray"
 export PATH="$W/bin:$PATH"
 cd "$W/repo"
 
-jq '. + {"vps3": {"disk": "/dev/vda", "system": "x86_64-linux", "datacenter": "Hetzner FSN1", "country": "DE"}}' hosts/hosts.json > h.json && mv h.json hosts/hosts.json
-sed -i.bak 's/^VPS1_ADDR=.*/VPS1_ADDR=100.64.0.1/; s/^VPS2_ADDR=.*/VPS2_ADDR=100.64.0.2/' .env.example
-printf 'VPS3_ADDR=100.64.0.3\n' >> .env.example
+# Fixture: three hosts named <datacenter>-<country>-n-<number>, so env prefixes with "-" -> "_" are exercised.
+cat > hosts/hosts.json <<'JSON'
+{
+  "aeza-de-n-1": {"disk": "/dev/vda", "system": "x86_64-linux"},
+  "hetzner-fi-n-1": {"disk": "/dev/vda", "system": "x86_64-linux"},
+  "ovh-nl-n-1": {"disk": "/dev/vda", "system": "x86_64-linux"}
+}
+JSON
+cat > .env.example <<'ENV'
+AEZA_DE_N_1_ADDR=100.64.0.1
+HETZNER_FI_N_1_ADDR=100.64.0.2
+OVH_NL_N_1_ADDR=100.64.0.3
+VLESS_UUID=
+REALITY_DEST=www.microsoft.com:443
+REALITY_SERVER_NAME=www.microsoft.com
+UNIVERSAL_PORT=443
+XHTTP_PORT=8443
+XHTTP_PATH=/api/v1/sync
+ENV
 
 check 'generate-secrets runs' scripts/generate-secrets.sh
-for n in VPS1 VPS2 VPS3; do
+for n in AEZA_DE_N_1 HETZNER_FI_N_1 OVH_NL_N_1; do
   for k in REALITY_PRIVATE_KEY REALITY_PUBLIC_KEY SHORT_ID; do
     check "${n}_$k generated" grep -q "^${n}_$k=." .env.local
   done
@@ -36,15 +52,14 @@ scripts/generate-secrets.sh >/dev/null
 check 'generate-secrets does not print secrets' bash -c '! scripts/generate-secrets.sh | grep -Eq "[0-9a-f]{16}"'
 
 check 'make-mobile-profiles runs' scripts/make-mobile-profiles.sh
-for h in vps1 vps2 vps3; do
+for h in aeza-de-n-1 hetzner-fi-n-1 ovh-nl-n-1; do
   check "$h universal profile" test -s "build/mobile/$h-universal.txt"
   check "$h xhttp profile" test -s "build/mobile/$h-xhttp-android.txt"
 done
-check 'universal uses Vision flow' grep -q 'flow=xtls-rprx-vision' build/mobile/vps1-universal.txt
-check 'xhttp profile uses xhttp' grep -q 'type=xhttp' build/mobile/vps2-xhttp-android.txt
-check 'unlabelled host keeps the plain name' grep -q '#Family%20VPN%201$' build/mobile/vps1-universal.txt
-check 'datacenter and country are in the profile name' grep -q '#Family%20VPN%203%20-%20Hetzner%20FSN1%2C%20DE$' build/mobile/vps3-universal.txt
-check 'XHTTP name keeps the marker and the location' grep -q '#Family%20VPN%203%20XHTTP%20-%20Hetzner%20FSN1%2C%20DE$' build/mobile/vps3-xhttp-android.txt
+check 'universal uses Vision flow' grep -q 'flow=xtls-rprx-vision' build/mobile/aeza-de-n-1-universal.txt
+check 'xhttp profile uses xhttp' grep -q 'type=xhttp' build/mobile/hetzner-fi-n-1-xhttp-android.txt
+check 'profile name is the host name' grep -q '#Family%20VPN%20aeza-de-n-1$' build/mobile/aeza-de-n-1-universal.txt
+check 'XHTTP profile name is the host name plus XHTTP' grep -q '#Family%20VPN%20ovh-nl-n-1%20XHTTP$' build/mobile/ovh-nl-n-1-xhttp-android.txt
 check 'no leftover profiles beyond hosts' bash -c '[[ "$(ls build/mobile/*.txt | wc -l)" -eq 6 ]]'
 
 # nix-status.sh against a fake ssh that returns canned health output.
@@ -79,18 +94,16 @@ mem_available_mb=900
 OUT
 FAKE
 chmod +x "$W/bin/ssh"
-out="$(scripts/nix-status.sh vps1 2>&1)"; rc=$?
-[[ $rc -eq 0 && "$out" == *"vps1: OK"* ]] && pass 'nix-status: healthy host exits 0' || fail 'nix-status: healthy host'
-out="$(scripts/nix-status.sh vps2 2>&1)"; rc=$?
+out="$(scripts/nix-status.sh aeza-de-n-1 2>&1)"; rc=$?
+[[ $rc -eq 0 && "$out" == *"aeza-de-n-1: OK"* ]] && pass 'nix-status: healthy host exits 0' || fail 'nix-status: healthy host'
+out="$(scripts/nix-status.sh hetzner-fi-n-1 2>&1)"; rc=$?
 [[ $rc -ne 0 && "$out" == *"VPN ports not listening"* ]] && pass 'nix-status: closed port is reported, exit 1' || fail 'nix-status: closed port'
-out="$(scripts/nix-status.sh vps3 2>&1)"; rc=$?
+out="$(scripts/nix-status.sh ovh-nl-n-1 2>&1)"; rc=$?
 [[ $rc -ne 0 && "$out" == *"UNREACHABLE"* ]] && pass 'nix-status: unreachable host is reported, exit 1' || fail 'nix-status: unreachable host'
-out="$(scripts/nix-status.sh --quiet vps1 2>&1)"; rc=$?
+out="$(scripts/nix-status.sh --quiet aeza-de-n-1 2>&1)"; rc=$?
 [[ $rc -eq 0 && -z "$out" ]] && pass 'nix-status --quiet is silent when healthy' || fail 'nix-status --quiet'
 
-jq '.vps1 += {"datacenter": "Hetzner FSN1", "country": "DE"}' hosts/hosts.json > h.json && mv h.json hosts/hosts.json
-out="$(scripts/nix-status.sh vps1 2>&1)"
-[[ "$out" == *"vps1 (Hetzner FSN1, DE): OK"* ]] && pass 'nix-status labels the host with datacenter and country' || fail "nix-status label: $out"
+out="$(scripts/nix-status.sh aeza-de-n-1 2>&1)"
 [[ "$out" == *"online_source_ips=2"* && "$out" == *"net_rx_mbit=1.50"* ]] && pass 'nix-status shows online users and network load' || fail 'nix-status online/network fields'
 
 # nix-history.sh: fake ssh serves a CSV (ts,vpn_up,online,conns,rx,tx), 1 minute apart, 1 sample down, 1 gap.
@@ -100,20 +113,20 @@ now=\$(date +%s)
 printf '%s\n' "\$((now-240)),1,1,3,1000000000,500000000" "\$((now-180)),1,3,9,1000000000,500000000" "\$((now-120)),0,0,0,1000000000,500000000" "\$((now-60)),1,2,5,1750000000,560000000"
 FAKE
 chmod +x "$W/bin/ssh"
-out="$(scripts/nix-history.sh vps1 1 2>&1)"; rc=$?
+out="$(scripts/nix-history.sh aeza-de-n-1 1 2>&1)"; rc=$?
 [[ $rc -eq 0 ]] && pass 'nix-history runs' || fail "nix-history failed: $out"
 [[ "$out" == *"peak 3"* ]] && pass 'nix-history peak online users' || fail "nix-history peak online: $out"
 [[ "$out" == *"in 100.00 Mbit/s"* ]] && pass 'nix-history peak inbound load (750 MB in 60 s = 100 Mbit/s)' || fail "nix-history peak load: $out"
 [[ "$out" == *"VPN availability : 75.00%"* ]] && pass 'nix-history availability counts the down sample' || fail "nix-history availability: $out"
 
 # Placeholder (documentation) addresses are refused by every script that takes one.
-sed -i.bak 's/^VPS1_ADDR=.*/VPS1_ADDR=203.0.113.10/' .env.local
+sed -i.bak 's/^AEZA_DE_N_1_ADDR=.*/AEZA_DE_N_1_ADDR=203.0.113.10/' .env.local
 out="$(scripts/make-mobile-profiles.sh 2>&1)"; rc=$?
 [[ $rc -ne 0 && "$out" == *"placeholder address"* ]] && pass 'make-mobile-profiles refuses a placeholder address' || fail "make-mobile-profiles placeholder: $out"
-out="$(scripts/nix-status.sh vps1 2>&1)"; rc=$?
+out="$(scripts/nix-status.sh aeza-de-n-1 2>&1)"; rc=$?
 [[ $rc -ne 0 && "$out" == *"placeholder address"* ]] && pass 'nix-status refuses a placeholder address' || fail "nix-status placeholder: $out"
-out="$(scripts/nix-install.sh vps1 root@198.51.100.20 </dev/null 2>&1)"; rc=$?
+out="$(scripts/nix-install.sh aeza-de-n-1 root@198.51.100.20 </dev/null 2>&1)"; rc=$?
 [[ $rc -ne 0 && "$out" == *"placeholder address"* ]] && pass 'nix-install refuses a placeholder target before doing anything' || fail "nix-install placeholder: $out"
-out="$(scripts/nix-push-secrets.sh vps1 admin@192.0.2.5 2>&1)"; rc=$?
+out="$(scripts/nix-push-secrets.sh aeza-de-n-1 admin@192.0.2.5 2>&1)"; rc=$?
 [[ $rc -ne 0 && "$out" == *"placeholder address"* ]] && pass 'nix-push-secrets refuses a placeholder target' || fail "nix-push-secrets placeholder: $out"
 finish

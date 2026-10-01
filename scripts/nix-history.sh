@@ -9,7 +9,8 @@ host="$1"; hours="${2:-24}"
 [[ "$hours" =~ ^[0-9]+$ && "$hours" -gt 0 ]] || { echo 'hours must be a positive integer' >&2; exit 1; }
 ADMIN_USER="${ADMIN_USER:-admin}"
 set -a; source "$ROOT/.env.local"; set +a
-n="$(printf '%s' "$host" | tr '[:lower:]' '[:upper:]')"; addr_v="${n}_ADDR"
+source "$ROOT/scripts/lib/hosts.sh"
+n="$(host_prefix "$host")"; addr_v="${n}_ADDR"
 [[ -n "${!addr_v:-}" ]] || { echo "Missing $addr_v in .env.local" >&2; exit 1; }
 source "$ROOT/scripts/lib/guards.sh"; refuse_placeholder "${!addr_v}" || exit 1
 

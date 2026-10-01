@@ -7,10 +7,10 @@ A small private VPN for the owner and parents: the same Xray stack (VLESS + REAL
 ```text
 Android / v2rayNG                     iPhone / Streisand
       |                                      |
-      |---- Family VPN 1 --------------------|
+      |---- Family VPN <server 1> ------------|
       |      VLESS + REALITY + Vision :443   |
       |                                      |
-      |---- Family VPN 2 --------------------|
+      |---- Family VPN <server 2> ------------|
       |      VLESS + REALITY + Vision :443   |
       |                                      |
       +---- Android-only fallbacks --------->|
@@ -18,29 +18,28 @@ Android / v2rayNG                     iPhone / Streisand
              on every server
 ```
 
-Start with two servers (different providers/ASNs when practical); adding more is one entry in `hosts/hosts.json`. Android can also use one auto-failover profile that switches between servers by itself; iPhone switches manually.
+Currently one server; adding more is one entry in `hosts/hosts.json` (different providers/ASNs when practical, so one outage does not take everything down). Android can also use one auto-failover profile that switches between servers by itself; iPhone switches manually.
 
 ## Quick start
 
 **Full guide with requirements, checks and troubleshooting: [docs/install.md](docs/install.md).** In short, per server:
 
 ```bash
-cp .env.example .env.local                  # once; set VPS1_ADDR (and VPS2_ADDR)
-# edit hosts/hosts.json (disk, optional datacenter/country), hosts/ssh_allowed_ips, hosts/authorized_keys
+cp .env.example .env.local                  # once; set AEZA_DE_N_1_ADDR (your host's variable, see below)
+# edit hosts/hosts.json (host name + disk), hosts/ssh_allowed_ips, hosts/authorized_keys
 
 ./scripts/preflight.sh
 ./scripts/generate-secrets.sh               # fills UUID/keys/short IDs in .env.local, prints nothing
 ./scripts/nix-validate.sh                   # every host must evaluate
 
-./scripts/nix-install.sh vps1 root@VPS1_IP          # ERASES the VPS disk, installs NixOS
-./scripts/nix-push-secrets.sh vps1 admin@VPS1_IP    # secrets -> server, tested, Xray starts
-./scripts/nix-check.sh admin@VPS1_IP
-./scripts/nix-status.sh vps1
-./scripts/nix-probe.sh vps1                 # real tunnel from your Mac
+./scripts/nix-install.sh aeza-de-n-1 root@SERVER_IP          # ERASES the VPS disk, installs NixOS
+./scripts/nix-push-secrets.sh aeza-de-n-1 admin@SERVER_IP    # secrets -> server, tested, Xray starts
+./scripts/nix-check.sh admin@SERVER_IP
+./scripts/nix-status.sh aeza-de-n-1
+./scripts/nix-probe.sh aeza-de-n-1                 # real tunnel from your Mac
 
-# repeat for vps2, then:
 ./scripts/make-mobile-profiles.sh           # QR codes in build/mobile/
-./scripts/make-android-auto-profile.sh      # optional Android auto-failover config
+# later, with 2+ servers: ./scripts/make-android-auto-profile.sh (Android auto-failover config)
 ```
 
 Requirements on your Mac: Nix with flakes, `xray`, `jq`, `qrencode` (`brew install xray jq qrencode`; Nix: see the install guide). Run the scripts from an address listed in `hosts/ssh_allowed_ips`: servers accept SSH only from there, and only as the `admin` user (root login is disabled after the install).
@@ -50,15 +49,17 @@ Never commit or paste `.env.local`, `build/`, UUIDs, REALITY keys, short IDs, VL
 ## Mobile profiles
 
 ```text
-build/mobile/vps1-universal.png        vps2-universal.png
-build/mobile/vps1-xhttp-android.png    vps2-xhttp-android.png
-build/mobile/android-auto.json         (optional, secrets inside)
+build/mobile/<host>-universal.png         one per host (aeza-de-n-1-universal.png, ...)
+build/mobile/<host>-xhttp-android.png     one per host, Android only
+build/mobile/android-auto.json            optional, needs 2+ servers, secrets inside
 ```
 
-Names include the location when set in `hosts/hosts.json`, e.g. `Family VPN 1 - Hetzner FSN1, DE`.
+Profile names are `Family VPN <host name>` (and `... XHTTP`), e.g. `Family VPN aeza-de-n-1`.
 
-- **Android (v2rayNG):** import all four QR codes. Use `Family VPN 1` normally, `Family VPN 2` if the first is unreachable, XHTTP profiles as extra fallbacks. Or import the auto-failover config (see [docs/nixos.md](docs/nixos.md#automatic-failover-android); importing it into the app is not yet verified).
-- **iPhone (Streisand):** import only the two universal QR codes; switch to `Family VPN 2` manually if needed.
+**Server naming:** `<datacenter>-<country>-n-<number>`, for example `aeza-de-n-1`. The name is the key in `hosts/hosts.json`, the profile name, and (upper-cased, `-` replaced by `_`) the prefix of its variables in `.env.local`: `AEZA_DE_N_1_ADDR`, `AEZA_DE_N_1_REALITY_PRIVATE_KEY`, ...
+
+- **Android (v2rayNG):** import every QR code (`*-universal.png`, `*-xhttp-android.png`). Use your main server's profile normally, another server's profile if it is unreachable, XHTTP profiles as extra fallbacks. Or import the auto-failover config (see [docs/nixos.md](docs/nixos.md#automatic-failover-android); importing it into the app is not yet verified).
+- **iPhone (Streisand):** import only the `*-universal.png` QR codes; with several servers switch manually if one is unreachable.
 
 ## Operating it
 

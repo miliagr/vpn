@@ -47,4 +47,6 @@ chmod 600 "$OUT/android-auto.json"
 if command -v xray >/dev/null; then
   xray run -test -format json -config "$OUT/android-auto.json" >/dev/null 2>&1 || { echo 'Generated config failed xray validation' >&2; rm -f "$OUT/android-auto.json"; exit 1; }
 fi
+[[ "$(jq '[.outbounds[] | select(.tag | startswith("vpn-"))] | length' "$OUT/android-auto.json")" -gt 1 ]] \
+  || echo 'Note: only one server in the pool, so there is nothing to fail over to yet; add a second host to hosts/hosts.json.' >&2
 echo "Wrote $OUT/android-auto.json ($(jq '[.outbounds[] | select(.tag | startswith("vpn-"))] | length' "$OUT/android-auto.json") servers in the pool). Import it in v2rayNG as a custom config."

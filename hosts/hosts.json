@@ -1,4 +1,3 @@
 {
-  "vps1": {"disk": "/dev/vda", "system": "x86_64-linux"},
-  "vps2": {"disk": "/dev/vda", "system": "x86_64-linux"}
+  "aeza-de-n-1": {"disk": "/dev/vda", "system": "x86_64-linux"}
 }

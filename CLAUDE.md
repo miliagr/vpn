@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Private family VPN: the same Xray stack (VLESS + REALITY) deployed to independent VPS hosts, declared as NixOS systems (`flake.nix`, `hosts/hosts.json`; start with two, add more by adding an entry), plus generated mobile import profiles (QR codes). No panel, database, subscription server, or Docker.
+Private family VPN: the same Xray stack (VLESS + REALITY) deployed to independent VPS hosts, declared as NixOS systems (`flake.nix`, `hosts/hosts.json`; currently one server, add more by adding an entry), plus generated mobile import profiles (QR codes). No panel, database, subscription server, or Docker.
 
 @AGENTS.md
 @CODEX_TASKS.md
@@ -45,4 +45,4 @@ Tests: `./tests/run.sh` (static checks, secret hygiene, script runs against a fa
 
 ## Reporting
 
-Final reports are compact: which hosts were deployed, health of both Xray services, QR file locations (Android: all four; iPhone: the two `*-universal.png` only), remaining manual steps. Never include UUIDs, keys, short IDs, or VLESS links. Respond to the user in Russian unless they write in English.
+Final reports are compact: which hosts were deployed, health of every Xray service, QR file locations (Android: universal and XHTTP codes; iPhone: the `*-universal.png` only), remaining manual steps. Never include UUIDs, keys, short IDs, or VLESS links. Respond to the user in Russian unless they write in English.

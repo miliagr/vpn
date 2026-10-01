@@ -8,7 +8,8 @@ name="$1"; target="$2"
 source "$ROOT/scripts/lib/guards.sh"; refuse_placeholder "$target" || exit 1
 jq -e --arg h "$name" 'has($h)' "$ROOT/hosts/hosts.json" >/dev/null || { echo "$name is not in hosts/hosts.json" >&2; exit 1; }
 set -a; source "$ROOT/.env.local"; set +a
-n="$(printf '%s' "$name" | tr '[:lower:]' '[:upper:]')"
+source "$ROOT/scripts/lib/hosts.sh"
+n="$(host_prefix "$name")"
 priv_v="${n}_REALITY_PRIVATE_KEY"; sid_v="${n}_SHORT_ID"
 for v in VLESS_UUID REALITY_DEST REALITY_SERVER_NAME XHTTP_PATH "$priv_v" "$sid_v"; do
   [[ -n "${!v:-}" ]] || { echo "Missing $v in .env.local" >&2; exit 1; }

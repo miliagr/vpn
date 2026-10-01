@@ -3,6 +3,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 set -a; source "$ROOT/.env.local"; set +a
 source "$ROOT/scripts/lib/guards.sh"
+source "$ROOT/scripts/lib/hosts.sh"
 OUT="$ROOT/build/mobile"; mkdir -p "$OUT"
 enc() { python3 -c 'import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=""))' "$1"; }
 make_universal() {
@@ -16,18 +17,14 @@ make_xhttp() {
     "$VLESS_UUID" "$addr" "$XHTTP_PORT" "$(enc "$REALITY_SERVER_NAME")" "$pub" "$sid" "$(enc "$XHTTP_PATH")" "$(enc "$name")"
 }
 command -v jq >/dev/null || { echo 'jq is required' >&2; exit 1; }
-i=0
 while IFS= read -r host; do
-  i=$((i+1))
-  n="$(printf '%s' "$host" | tr '[:lower:]' '[:upper:]')"
+  n="$(host_prefix "$host")"
   addr_v="${n}_ADDR"; pub_v="${n}_REALITY_PUBLIC_KEY"; sid_v="${n}_SHORT_ID"
   for v in "$addr_v" "$pub_v" "$sid_v"; do [[ -n "${!v:-}" ]] || { echo "Missing $v in .env.local" >&2; exit 1; }; done
   refuse_placeholder "${!addr_v}" || exit 1
-  # Optional "datacenter" and "country" in hosts/hosts.json become part of the profile name, e.g. "Family VPN 1 - Hetzner FSN1, DE".
-  where="$(jq -r --arg h "$host" '[.[$h].datacenter, .[$h].country] | map(select(. != null and . != "")) | join(", ")' "$ROOT/hosts/hosts.json")"
-  suffix=""; [[ -z "$where" ]] || suffix=" - $where"
-  make_universal "${!addr_v}" "${!pub_v}" "${!sid_v}" "Family VPN $i$suffix" > "$OUT/$host-universal.txt"
-  make_xhttp "${!addr_v}" "${!pub_v}" "${!sid_v}" "Family VPN $i XHTTP$suffix" > "$OUT/$host-xhttp-android.txt"
+  # The host name already says where the server is (<datacenter>-<country>-n-<number>), so it is the profile name.
+  make_universal "${!addr_v}" "${!pub_v}" "${!sid_v}" "Family VPN $host" > "$OUT/$host-universal.txt"
+  make_xhttp "${!addr_v}" "${!pub_v}" "${!sid_v}" "Family VPN $host XHTTP" > "$OUT/$host-xhttp-android.txt"
 done < <(jq -r 'keys_unsorted[]' "$ROOT/hosts/hosts.json")
 if command -v qrencode >/dev/null; then
   for f in "$OUT"/*.txt; do qrencode -o "${f%.txt}.png" < "$f"; done
