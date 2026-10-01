@@ -112,7 +112,7 @@ The default template uses one family VLESS UUID. For just a few trusted family d
 
 ## NixOS (primary)
 
-Servers are now declared as NixOS systems; see [docs/nixos.md](docs/nixos.md). The Ubuntu workflow above is the legacy path.
+Servers are declared as NixOS systems: **[docs/install.md](docs/install.md)** is the step-by-step installation guide, [docs/nixos.md](docs/nixos.md) the design, security and monitoring reference. The Ubuntu workflow above is the legacy path.
 
 ## Tests and contributing
 

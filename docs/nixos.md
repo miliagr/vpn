@@ -20,21 +20,7 @@ Secrets never enter git or the Nix store. `.env.local` holds them locally; `scri
 Nix with flakes (`curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install`), `xray`, `jq`, `qrencode`. `flake.lock` is committed; refresh it with `nix flake update`. Both hosts were evaluated against nixpkgs `nixos-unstable` (NixOS 26.11 pre-release); the unit itself has not yet run on a real server.
 
 ## First two servers
-Provision two plain Ubuntu/Debian VPS with root SSH key access, set the real `disk` in `hosts/hosts.json`, then:
-
-```bash
-cp .env.example .env.local        # set VPS1_ADDR, VPS2_ADDR
-./scripts/preflight.sh
-./scripts/generate-secrets.sh
-./scripts/nix-validate.sh
-
-./scripts/nix-install.sh vps1 root@VPS1_IP      # ERASES the disk (asks for confirmation)
-./scripts/nix-push-secrets.sh vps1 admin@VPS1_IP   # root SSH is disabled after install
-./scripts/nix-check.sh admin@VPS1_IP
-# only then repeat for vps2
-
-./scripts/make-mobile-profiles.sh
-```
+Follow [install.md](install.md): inspect the VPS, fill `hosts/hosts.json` and `.env.local`, `generate-secrets.sh`, `nix-validate.sh`, then per server `nix-install.sh` (erases the disk), `nix-push-secrets.sh`, `nix-check.sh`, `nix-status.sh`, `nix-probe.sh`; finally `make-mobile-profiles.sh`.
 
 ## Day-2
 - Config change: edit `nix/`, `./scripts/nix-validate.sh`, `./scripts/nix-deploy.sh <host> admin@ip`, `./scripts/nix-check.sh admin@ip`. Roll back with `ssh admin@ip sudo nixos-rebuild switch --rollback`.

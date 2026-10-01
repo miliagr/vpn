@@ -49,6 +49,11 @@ check 'private/loopback ranges are blackholed (clients cannot reach the server i
   jq -e '.routing.rules[0] | .outboundTag == "block" and (.ip | index("127.0.0.0/8") != null and index("169.254.0.0/16") != null and index("10.0.0.0/8") != null and index("::1/128") != null)' "$T"
 check 'block outbound is a blackhole' jq -e '.outbounds[] | select(.tag == "block") | .protocol == "blackhole"' "$T"
 
+# Docs must not mention scripts that do not exist.
+for ref in $(grep -ohE 'scripts/[a-z0-9-]+\.sh' README.md docs/*.md AGENTS.md CLAUDE.md CODEX_TASKS.md | sort -u); do
+  check "docs reference existing script $ref" test -x "$ref"
+done
+
 # Secret hygiene on everything git tracks or has staged.
 tracked="$(git ls-files)"
 check '.env.local is ignored' git check-ignore -q .env.local

@@ -4,6 +4,10 @@ Every commit must update this file (enforced by `.githooks/pre-commit`; enable w
 
 ## Unreleased
 
+### Added
+- `docs/install.md`: step-by-step server installation guide (requirements, inspection, configuration, secrets, install, verification, second server, profiles, troubleshooting); `docs/nixos.md` and `README.md` link to it.
+- Test that every `scripts/*.sh` mentioned in the docs exists.
+
 ### Changed
 - `hosts/ssh_allowed_ips`: SSH is now also allowed from the atlas server (a second source address), in addition to the owner's address.
 
