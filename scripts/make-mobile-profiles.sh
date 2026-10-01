@@ -2,6 +2,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 set -a; source "$ROOT/.env.local"; set +a
+source "$ROOT/scripts/lib/guards.sh"
 OUT="$ROOT/build/mobile"; mkdir -p "$OUT"
 enc() { python3 -c 'import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=""))' "$1"; }
 make_universal() {
@@ -21,6 +22,7 @@ while IFS= read -r host; do
   n="$(printf '%s' "$host" | tr '[:lower:]' '[:upper:]')"
   addr_v="${n}_ADDR"; pub_v="${n}_REALITY_PUBLIC_KEY"; sid_v="${n}_SHORT_ID"
   for v in "$addr_v" "$pub_v" "$sid_v"; do [[ -n "${!v:-}" ]] || { echo "Missing $v in .env.local" >&2; exit 1; }; done
+  refuse_placeholder "${!addr_v}" || exit 1
   # Optional "datacenter" and "country" in hosts/hosts.json become part of the profile name, e.g. "Family VPN 1 - Hetzner FSN1, DE".
   where="$(jq -r --arg h "$host" '[.[$h].datacenter, .[$h].country] | map(select(. != null and . != "")) | join(", ")' "$ROOT/hosts/hosts.json")"
   suffix=""; [[ -z "$where" ]] || suffix=" - $where"

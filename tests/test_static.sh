@@ -33,7 +33,6 @@ for p in $placeholders; do
     UNIVERSAL_PORT|XHTTP_PORT) ;;
     *) grep -q "printf '$p=" scripts/nix-push-secrets.sh && pass "push-secrets writes $p" || fail "push-secrets does not write $p" ;;
   esac
-  grep -q "__${p}__" scripts/render.sh && pass "render.sh (legacy) substitutes $p" || fail "render.sh does not substitute $p"
 done
 
 # The raw template is not valid JSON (unquoted port placeholders), so check a rendered copy.
@@ -52,6 +51,11 @@ check 'block outbound is a blackhole' jq -e '.outbounds[] | select(.tag == "bloc
 # Docs must not mention scripts that do not exist.
 for ref in $(grep -ohE 'scripts/[a-z0-9-]+\.sh' README.md docs/*.md AGENTS.md CLAUDE.md CODEX_TASKS.md | sort -u); do
   check "docs reference existing script $ref" test -x "$ref"
+done
+
+# No orphaned scripts: every script is mentioned by a document.
+for f in scripts/*.sh; do
+  check "$f is documented" grep -qE "$(basename "$f")" README.md docs/*.md AGENTS.md CLAUDE.md CODEX_TASKS.md
 done
 
 # Secret hygiene on everything git tracks or has staged.

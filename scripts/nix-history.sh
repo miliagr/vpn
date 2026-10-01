@@ -11,6 +11,7 @@ ADMIN_USER="${ADMIN_USER:-admin}"
 set -a; source "$ROOT/.env.local"; set +a
 n="$(printf '%s' "$host" | tr '[:lower:]' '[:upper:]')"; addr_v="${n}_ADDR"
 [[ -n "${!addr_v:-}" ]] || { echo "Missing $addr_v in .env.local" >&2; exit 1; }
+source "$ROOT/scripts/lib/guards.sh"; refuse_placeholder "${!addr_v}" || exit 1
 
 ssh -o BatchMode=yes -o ConnectTimeout=10 "$ADMIN_USER@${!addr_v}" 'cat /var/lib/family-vpn-metrics/history.csv' \
 | awk -F, -v hours="$hours" -v host="$host" -v now="$(date +%s)" '

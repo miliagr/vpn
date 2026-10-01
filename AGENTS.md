@@ -29,9 +29,14 @@ The iOS setup should remain conservative: use the universal REALITY/Vision profi
 9. Keep deployment idempotent and reversible. Back up an existing Xray config before replacing it.
 10. Do not invent current Xray syntax. If a schema/transport field fails validation, inspect the installed Xray version and current upstream documentation, then make the smallest compatible change.
 
-## Tests and documentation
+## Tests, documentation and cleanup
 
-Run `./tests/run.sh` before committing. Every commit must update `CHANGELOG.md`, plus `README.md`/`docs/` when behaviour changes; `.githooks/pre-commit` enforces it (`./scripts/install-hooks.sh` enables it). Do not bypass with `--no-verify`.
+With every commit:
+- Run `./tests/run.sh`.
+- Update all documentation the change touches (`README.md`, `docs/`, `AGENTS.md`, `CLAUDE.md`, `CODEX_TASKS.md`) and add a `CHANGELOG.md` entry. Docs describe only what exists now; rewrite or delete outdated text.
+- Delete what became unnecessary: scripts, tests, config options, env variables, doc sections, dead references. Git history is the archive; do not keep code "for reference".
+
+`.githooks/pre-commit` enforces the tests, the changelog and docs for behaviour changes (`./scripts/install-hooks.sh` enables it); `tests/test_static.sh` fails on scripts that no document mentions and on docs that mention missing scripts. Do not bypass with `--no-verify`.
 
 ## Repository workflow
 
@@ -53,7 +58,7 @@ Later changes: `./scripts/nix-validate.sh`, then `./scripts/nix-deploy.sh <host>
 
 ## Server expectations
 
-**NixOS is the target** (see `docs/install.md`, `docs/nixos.md`, `flake.nix`, `hosts/hosts.json`); use the `scripts/nix-*.sh` workflow. The Ubuntu path (`render.sh`, `validate.sh`, `deploy.sh`, `check-server.sh`) is legacy, covers only vps1/vps2, and is used only if the user explicitly asks. On NixOS the equivalents of the config-safety rules are: config rendered from the template at start and tested in `ExecStartPre`, secrets only in `/var/lib/family-vpn/xray.env` (never the Nix store), and generation rollback instead of manual backups.
+**NixOS is the target** (see `docs/install.md`, `docs/nixos.md`, `flake.nix`, `hosts/hosts.json`); use the `scripts/nix-*.sh` workflow. On NixOS the equivalents of the config-safety rules are: config rendered from the template at start and tested in `ExecStartPre`, secrets only in `/var/lib/family-vpn/xray.env` (never the Nix store), and generation rollback instead of manual backups.
 
 Each VPS should have:
 - Xray-core managed by systemd (on NixOS: the `xray` unit from `nix/xray.nix`).

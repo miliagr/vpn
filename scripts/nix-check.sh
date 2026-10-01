@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 [[ $# -eq 1 ]] || { echo "Usage: $0 user@host" >&2; exit 1; }
+source "$(dirname "$0")/lib/guards.sh"; refuse_placeholder "$1" || exit 1
 ssh "$1" 'bash -s' <<'REMOTE'
 set -euo pipefail
 echo '== system =='

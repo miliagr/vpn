@@ -4,6 +4,13 @@ Every commit must update this file (enforced by `.githooks/pre-commit`; enable w
 
 ## Unreleased
 
+### Removed
+- The Ubuntu path (`render.sh`, `validate.sh`, `deploy.sh`, `check-server.sh`) and its docs; the NixOS workflow replaces it. `preflight.sh` now requires `nix` and `curl` and no longer checks `scp`.
+
+### Added
+- `scripts/lib/guards.sh`: all scripts that take a server address refuse RFC 5737 placeholder addresses (the guard `render.sh` used to provide).
+- Rule (AGENTS.md, CLAUDE.md, README): every commit updates the docs it touches and deletes what became unnecessary; a test fails on undocumented scripts, and the pre-commit hook prints a reminder.
+
 ### Changed (documentation)
 - `README.md` rewritten for the current NixOS workflow (quick start, operating commands, security model, layout); the Ubuntu path is labelled legacy at the end.
 - `AGENTS.md`, `CODEX_TASKS.md`, `START_HERE.txt` and `CLAUDE.md` updated: install via `nix-install.sh`/`nix-push-secrets.sh`, verification via `nix-check/status/probe`, disk-erase confirmation, current guarantees.

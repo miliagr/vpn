@@ -33,8 +33,6 @@ Follow [install.md](install.md): inspect the VPS, fill `hosts/hosts.json` and `.
 3. `nix-validate.sh`, `nix-install.sh vps3 ...`, `nix-push-secrets.sh vps3 ...`, `nix-check.sh ...`.
 4. `make-mobile-profiles.sh` emits `vps3-universal` and `vps3-xhttp-android` automatically. Profile names include the location, e.g. `Family VPN 3 - Hetzner FSN1, DE` and `Family VPN 3 XHTTP - Hetzner FSN1, DE`; without `datacenter`/`country` they are just `Family VPN 3`. Changing a name means re-importing that QR code.
 
-The Ubuntu scripts (`render/deploy/check-server/validate`) are the legacy path and still cover only vps1/vps2.
-
 ## Automatic failover (Android)
 `./scripts/make-android-auto-profile.sh [--with-xhttp]` writes `build/mobile/android-auto.json`: one Xray client config that contains every server, health-checks them every 10 s through the tunnel itself (`burstObservatory`) and sends new connections to the fastest live one (`leastPing` balancer). If a server dies, new connections move to the survivor within roughly 10-25 s; connections already open on the dead server break and are re-made by the app. If every server is down it fails closed (nothing leaks outside the VPN). No subscription server or control plane is involved. `--with-xhttp` also puts the XHTTP transports in the pool; by default only the Vision profiles are used, and the XHTTP profiles stay as manual fallbacks.
 

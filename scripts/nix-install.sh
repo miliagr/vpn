@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 [[ $# -eq 2 ]] || { echo "Usage: $0 <host-name-from-hosts.json> root@ip" >&2; exit 1; }
 name="$1"; target="$2"
+source "$ROOT/scripts/lib/guards.sh"; refuse_placeholder "$target" || exit 1
 command -v nix >/dev/null || { echo 'nix is required' >&2; exit 1; }
 jq -e --arg h "$name" 'has($h)' "$ROOT/hosts/hosts.json" >/dev/null || { echo "$name is not in hosts/hosts.json" >&2; exit 1; }
 disk="$(jq -r --arg h "$name" '.[$h].disk' "$ROOT/hosts/hosts.json")"

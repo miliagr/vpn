@@ -4,6 +4,7 @@
 vless_outbound() {
   local host="$1" transport="$2" tag="$3" n addr_v pub_v sid_v v
   n="$(printf '%s' "$host" | tr '[:lower:]' '[:upper:]')"; addr_v="${n}_ADDR"; pub_v="${n}_REALITY_PUBLIC_KEY"; sid_v="${n}_SHORT_ID"
+  source "$(dirname "${BASH_SOURCE[0]}")/guards.sh"; refuse_placeholder "${!addr_v:-}" || return 1
   for v in "$addr_v" "$pub_v" "$sid_v" VLESS_UUID REALITY_SERVER_NAME UNIVERSAL_PORT XHTTP_PORT XHTTP_PATH; do
     [[ -n "${!v:-}" ]] || { echo "$host: missing $v in .env.local" >&2; return 1; }
   done

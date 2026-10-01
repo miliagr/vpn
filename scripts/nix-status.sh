@@ -6,6 +6,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 quiet=0; [[ "${1:-}" == "--quiet" ]] && { quiet=1; shift; }
 ADMIN_USER="${ADMIN_USER:-admin}"
+source "$ROOT/scripts/lib/guards.sh"
 command -v jq >/dev/null || { echo 'jq is required' >&2; exit 1; }
 set -a; source "$ROOT/.env.local"; set +a
 if [[ $# -gt 0 ]]; then hosts=("$@"); else hosts=(); while IFS= read -r h; do hosts+=("$h"); done < <(jq -r 'keys_unsorted[]' "$ROOT/hosts/hosts.json"); fi
@@ -16,6 +17,7 @@ for host in "${hosts[@]}"; do
   where="$(jq -r --arg h "$host" '[.[$h].datacenter, .[$h].country] | map(select(. != null and . != "")) | join(", ")' "$ROOT/hosts/hosts.json")"
   label="$host"; [[ -z "$where" ]] || label="$host ($where)"
   [[ -n "${!addr_v:-}" ]] || { echo "$host: missing $addr_v in .env.local" >&2; rc=1; continue; }
+  refuse_placeholder "${!addr_v}" || { rc=1; continue; }
   if ! out="$(ssh -o BatchMode=yes -o ConnectTimeout=10 "$ADMIN_USER@${!addr_v}" 'bash -s' 2>&1 <<'REMOTE'
 set -u
 m=/var/lib/family-vpn-metrics/family_vpn.prom

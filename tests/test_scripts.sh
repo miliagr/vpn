@@ -19,8 +19,8 @@ export PATH="$W/bin:$PATH"
 cd "$W/repo"
 
 jq '. + {"vps3": {"disk": "/dev/vda", "system": "x86_64-linux", "datacenter": "Hetzner FSN1", "country": "DE"}}' hosts/hosts.json > h.json && mv h.json hosts/hosts.json
-sed -i.bak 's/^VPS1_ADDR=.*/VPS1_ADDR=192.0.2.1/; s/^VPS2_ADDR=.*/VPS2_ADDR=192.0.2.2/' .env.example
-printf 'VPS3_ADDR=192.0.2.3\n' >> .env.example
+sed -i.bak 's/^VPS1_ADDR=.*/VPS1_ADDR=100.64.0.1/; s/^VPS2_ADDR=.*/VPS2_ADDR=100.64.0.2/' .env.example
+printf 'VPS3_ADDR=100.64.0.3\n' >> .env.example
 
 check 'generate-secrets runs' scripts/generate-secrets.sh
 for n in VPS1 VPS2 VPS3; do
@@ -52,8 +52,8 @@ cat > "$W/bin/ssh" <<'FAKE'
 #!/usr/bin/env bash
 cat >/dev/null
 case "$*" in
-  *192.0.2.3*) echo 'ssh: connect to host 192.0.2.3 port 22: Connection timed out' >&2; exit 255 ;;
-  *192.0.2.2*) want_ports=0 ;;
+  *100.64.0.3*) echo 'ssh: connect to host 100.64.0.3 port 22: Connection timed out' >&2; exit 255 ;;
+  *100.64.0.2*) want_ports=0 ;;
   *) want_ports=1 ;;
 esac
 cat <<OUT
@@ -105,4 +105,15 @@ out="$(scripts/nix-history.sh vps1 1 2>&1)"; rc=$?
 [[ "$out" == *"peak 3"* ]] && pass 'nix-history peak online users' || fail "nix-history peak online: $out"
 [[ "$out" == *"in 100.00 Mbit/s"* ]] && pass 'nix-history peak inbound load (750 MB in 60 s = 100 Mbit/s)' || fail "nix-history peak load: $out"
 [[ "$out" == *"VPN availability : 75.00%"* ]] && pass 'nix-history availability counts the down sample' || fail "nix-history availability: $out"
+
+# Placeholder (documentation) addresses are refused by every script that takes one.
+sed -i.bak 's/^VPS1_ADDR=.*/VPS1_ADDR=203.0.113.10/' .env.local
+out="$(scripts/make-mobile-profiles.sh 2>&1)"; rc=$?
+[[ $rc -ne 0 && "$out" == *"placeholder address"* ]] && pass 'make-mobile-profiles refuses a placeholder address' || fail "make-mobile-profiles placeholder: $out"
+out="$(scripts/nix-status.sh vps1 2>&1)"; rc=$?
+[[ $rc -ne 0 && "$out" == *"placeholder address"* ]] && pass 'nix-status refuses a placeholder address' || fail "nix-status placeholder: $out"
+out="$(scripts/nix-install.sh vps1 root@198.51.100.20 </dev/null 2>&1)"; rc=$?
+[[ $rc -ne 0 && "$out" == *"placeholder address"* ]] && pass 'nix-install refuses a placeholder target before doing anything' || fail "nix-install placeholder: $out"
+out="$(scripts/nix-push-secrets.sh vps1 admin@192.0.2.5 2>&1)"; rc=$?
+[[ $rc -ne 0 && "$out" == *"placeholder address"* ]] && pass 'nix-push-secrets refuses a placeholder target' || fail "nix-push-secrets placeholder: $out"
 finish

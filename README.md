@@ -99,7 +99,7 @@ docs/                  install.md, nixos.md
 ./tests/run.sh
 ```
 
-Every commit updates `CHANGELOG.md` (and docs when behaviour changes); the pre-commit hook runs the tests and enforces it.
+Every commit must (1) pass the tests, (2) update `CHANGELOG.md` and any docs it touches, and (3) delete whatever became unnecessary (scripts, options, tests, outdated doc text). The pre-commit hook runs the tests and checks the changelog/docs; the cleanup is on the author, and `tests/test_static.sh` catches orphaned scripts and doc references to missing ones.
 
 ## Using an AI agent
 
@@ -112,15 +112,3 @@ Keep all secrets local and never print UUIDs, REALITY private keys, short IDs, o
 Ask before any step that erases a disk, and verify each VPS before moving to the next one.
 At the end tell me only which QR files to import into v2rayNG on Android and Streisand on iPhone.
 ```
-
-## Legacy: Ubuntu without NixOS
-
-The older path configures Xray on an existing Ubuntu 24.04 host and is kept only for reference; it covers exactly `vps1` and `vps2` and has none of the NixOS hardening or monitoring:
-
-```bash
-./scripts/render.sh && ./scripts/validate.sh
-./scripts/deploy.sh vps1 root@VPS1_IP && ./scripts/check-server.sh root@VPS1_IP
-./scripts/deploy.sh vps2 root@VPS2_IP && ./scripts/check-server.sh root@VPS2_IP
-```
-
-`render.sh` refuses documentation/placeholder addresses, so both `VPS1_ADDR` and `VPS2_ADDR` must be real for it. Do not mix this path with the NixOS one on the same server.
