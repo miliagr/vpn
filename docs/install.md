@@ -69,7 +69,7 @@ You must type the host name to confirm. nixos-anywhere then:
 2. partitions the disk as described in `nix/disk.nix` (BIOS-boot + EFI + ext4);
 3. installs the system from this flake and reboots.
 
-It takes several minutes; the SSH connection drops during the reboot. Afterwards:
+Extra options are passed through to nixos-anywhere (`--debug` for a verbose log, `--kexec-extra-flags ...`; see the troubleshooting table). It takes several minutes; the SSH connection drops during the reboot. Afterwards:
 - the server's SSH host key changed: `ssh-keygen -R SERVER_IP`;
 - **root login is disabled**; log in as `admin`, from an allowed address only: `ssh admin@SERVER_IP`.
 
@@ -108,6 +108,7 @@ Never paste QR contents, VLESS links or generated JSON into chats or tickets.
 | Symptom | Likely cause and fix |
 |---|---|
 | `nix-install.sh` stops at partitioning | Wrong `disk` in `hosts/hosts.json`; check `lsblk` and retry. |
+| `Kexec failed`, and `dmesg` on the old system shows `PEFILE: Unsigned PE binary` | The kernel of the provider's image only accepts signed images through the file-based kexec call. Force the classic call: `./scripts/nix-install.sh <host> root@IP --kexec-extra-flags "--kexec-syscall"`. (Needs `kernel.kexec_load_disabled = 0`; check with `sysctl kernel.kexec_load_disabled`.) Seen on Ubuntu 26.04 at Aeza. |
 | Installer fails or hangs early | Not enough RAM for `kexec` (< 1 GB) or no `kexec` support; use a larger plan or install NixOS from the provider's ISO and continue from step 5. |
 | After the reboot the server never answers | Network did not come up (static address, IPv6-only). Open the provider console, look at `ip a`, fix the network configuration, redeploy. Reinstalling the provider image and trying again is also fine. |
 | `Permission denied (publickey)` as `admin` | Your key is not in `hosts/authorized_keys`, or you are not connecting from an allowed address. Fix the repository and redeploy via the console or reinstall. |

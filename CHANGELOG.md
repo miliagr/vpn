@@ -4,6 +4,9 @@ Every commit must update this file (enforced by `.githooks/pre-commit`; enable w
 
 ## Unreleased
 
+### Added
+- `nix-install.sh` forwards extra options to nixos-anywhere (`--debug`, `--kexec-extra-flags ...`). Needed on Ubuntu 26.04 at Aeza, where the kernel rejects the unsigned installer kernel through the file-based kexec call (`PEFILE: Unsigned PE binary`, "Kexec failed"); the install guide's troubleshooting table documents the `--kexec-extra-flags "--kexec-syscall"` workaround.
+
 ### Changed (server naming)
 - Servers are named `<datacenter>-<country>-n-<number>` (first one: `aeza-de-n-1`). The name is the key in `hosts/hosts.json`, the profile name (`Family VPN aeza-de-n-1`, `... XHTTP`) and, upper-cased with `-` -> `_`, the variable prefix in `.env.local` (`AEZA_DE_N_1_ADDR`). A test enforces the pattern.
 - New `scripts/lib/hosts.sh` (`host_prefix`) used by all scripts that read per-host variables.

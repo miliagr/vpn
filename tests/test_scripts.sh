@@ -129,4 +129,17 @@ out="$(scripts/nix-install.sh aeza-de-n-1 root@198.51.100.20 </dev/null 2>&1)"; 
 [[ $rc -ne 0 && "$out" == *"placeholder address"* ]] && pass 'nix-install refuses a placeholder target before doing anything' || fail "nix-install placeholder: $out"
 out="$(scripts/nix-push-secrets.sh aeza-de-n-1 admin@192.0.2.5 2>&1)"; rc=$?
 [[ $rc -ne 0 && "$out" == *"placeholder address"* ]] && pass 'nix-push-secrets refuses a placeholder target' || fail "nix-push-secrets placeholder: $out"
+
+# nix-install.sh forwards extra options to nixos-anywhere (fake nix records its arguments).
+sed -i.bak 's/^AEZA_DE_N_1_ADDR=.*/AEZA_DE_N_1_ADDR=100.64.0.1/' .env.local
+cat > "$W/bin/nix" <<'FAKE'
+#!/usr/bin/env bash
+printf '%s\n' "$@" > "$NIX_ARGS_FILE"
+FAKE
+chmod +x "$W/bin/nix"
+export NIX_ARGS_FILE="$W/nix-args"
+echo aeza-de-n-1 | scripts/nix-install.sh aeza-de-n-1 root@100.64.0.1 --kexec-extra-flags "--kexec-syscall" >/dev/null 2>&1
+check 'nix-install passes extra options to nixos-anywhere' bash -c 'grep -qx -- "--kexec-extra-flags" "$0" && grep -qx -- "--kexec-syscall" "$0" && grep -qx -- ".#aeza-de-n-1" "$0"' "$NIX_ARGS_FILE"
+echo aeza-de-n-1 | scripts/nix-install.sh aeza-de-n-1 root@100.64.0.1 >/dev/null 2>&1
+check 'nix-install works without extra options' bash -c '! grep -q -- "--kexec" "$0" && grep -qx -- "--target-host" "$0"' "$NIX_ARGS_FILE"
 finish
