@@ -5,6 +5,9 @@ Every commit must update this file (enforced by `.githooks/pre-commit`; enable w
 ## Unreleased
 
 ### Changed
+- `make-wireguard-profiles.sh` now generates per-user WireGuard profiles instead of a single shared profile per host. One profile per user (owner, parent1, parent2) per host. Each user gets a unique private key and deterministically allocated IP (10.0.0.2 + md5(user) % 252). Naming: `<host>-wireguard-<user>.txt/.png`. The script reads users from a hardcoded list; extend it if more family members are added.
+
+### Changed
 - Renamed service and paths from `family-vpn-*` to `vpn-*`: `family-vpn-health` → `vpn-health`, `/var/lib/family-vpn` → `/var/lib/vpn`, `/var/lib/family-vpn-metrics` → `/var/lib/vpn-metrics`, `family_vpn.prom` → `vpn.prom`, metrics `family_vpn_*` → `vpn_*`. Requires server reinstall.
 
 ### Fixed
@@ -14,7 +17,7 @@ Every commit must update this file (enforced by `.githooks/pre-commit`; enable w
 - `nix-install.sh` forwards extra options to nixos-anywhere (`--debug`, `--kexec-extra-flags ...`). Needed on Ubuntu 26.04 at Aeza, where the kernel rejects the unsigned installer kernel through the file-based kexec call (`PEFILE: Unsigned PE binary`, "Kexec failed"); the install guide's troubleshooting table documents the `--kexec-extra-flags "--kexec-syscall"` workaround.
 
 ### Changed (server naming)
-- Servers are named `<datacenter>-<country>-n-<number>` (first one: `aeza-de-n-1`). The name is the key in `hosts/hosts.json`, the profile name (`Family VPN aeza-de-n-1`, `... XHTTP`) and, upper-cased with `-` -> `_`, the variable prefix in `.env.local` (`AEZA_DE_N_1_ADDR`). A test enforces the pattern.
+- Servers are named `<datacenter>-<country>-n-<number>` (first one: `aeza-de-n-1`). The name is the key in `hosts/hosts.json`, the profile name (`VPN aeza-de-n-1`, `... XHTTP`) and, upper-cased with `-` -> `_`, the variable prefix in `.env.local` (`AEZA_DE_N_1_ADDR`). A test enforces the pattern.
 - New `scripts/lib/hosts.sh` (`host_prefix`) used by all scripts that read per-host variables.
 - Removed the optional `datacenter`/`country` fields and their handling: the name carries that information.
 - Tests build their own sandbox hosts (hyphenated names) instead of relying on the real host list.
@@ -52,7 +55,7 @@ Every commit must update this file (enforced by `.githooks/pre-commit`; enable w
 - Importing the file into v2rayNG itself is not verified; iPhone remains manual.
 
 ### Added
-- Optional `datacenter` and `country` per host in `hosts/hosts.json`; they are appended to mobile profile names (`Family VPN 1 - Hetzner FSN1, DE`, `Family VPN 1 XHTTP - Hetzner FSN1, DE`) and shown by `nix-status.sh`. Hosts without them keep the plain names. Tests validate the format.
+- Optional `datacenter` and `country` per host in `hosts/hosts.json`; they are appended to mobile profile names (`VPN 1 - Hetzner FSN1, DE`, `VPN 1 XHTTP - Hetzner FSN1, DE`) and shown by `nix-status.sh`. Hosts without them keep the plain names. Tests validate the format.
 
 ### Security
 - SSH (port 22) is reachable only from the addresses listed in `hosts/ssh_allowed_ips` (initially the owner's address); the firewall no longer opens 22 globally. fail2ban ignores those addresses. Evaluation fails if the list is empty or contains anything but IPs/CIDRs.

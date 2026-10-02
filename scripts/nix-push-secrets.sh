@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sends this host's secrets from .env.local to /var/lib/vpn/xray.env, validates them, then (re)starts xray.
+# Sends this host's secrets from .env.local to /var/lib/vpn/vpn.env, validates Xray config, then restarts services.
 # Secrets travel over ssh stdin, never on a command line or in stdout.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -10,8 +10,8 @@ jq -e --arg h "$name" 'has($h)' "$ROOT/hosts/hosts.json" >/dev/null || { echo "$
 set -a; source "$ROOT/.env.local"; set +a
 source "$ROOT/scripts/lib/hosts.sh"
 n="$(host_prefix "$name")"
-priv_v="${n}_REALITY_PRIVATE_KEY"; sid_v="${n}_SHORT_ID"
-for v in VLESS_UUID REALITY_DEST REALITY_SERVER_NAME XHTTP_PATH "$priv_v" "$sid_v"; do
+priv_v="${n}_REALITY_PRIVATE_KEY"; sid_v="${n}_SHORT_ID"; wg_priv_v="${n}_WG_PRIVATE_KEY"; wg_port_v="${n}_WG_PORT"
+for v in VLESS_UUID REALITY_DEST REALITY_SERVER_NAME XHTTP_PATH "$priv_v" "$sid_v" "$wg_priv_v" "$wg_port_v"; do
   [[ -n "${!v:-}" ]] || { echo "Missing $v in .env.local" >&2; exit 1; }
 done
 {
@@ -21,12 +21,14 @@ done
   printf 'REALITY_DEST=%s\n' "$REALITY_DEST"
   printf 'REALITY_SERVER_NAME=%s\n' "$REALITY_SERVER_NAME"
   printf 'XHTTP_PATH=%s\n' "$XHTTP_PATH"
-} | ssh "$target" 'sudo sh -c "umask 077; install -d -m 700 /var/lib/vpn; cat > /var/lib/vpn/xray.env.new"'
+  printf 'WG_PRIVATE_KEY=%s\n' "${!wg_priv_v}"
+  printf 'WG_PORT=%s\n' "${!wg_port_v}"
+} | ssh "$target" 'sudo sh -c "umask 077; install -d -m 700 /var/lib/vpn; cat > /var/lib/vpn/vpn.env.new"'
 
 ssh "$target" 'sudo bash -s' <<'REMOTE'
 set -euo pipefail
-new=/var/lib/vpn/xray.env.new
-cur=/var/lib/vpn/xray.env
+new=/var/lib/vpn/vpn.env.new
+cur=/var/lib/vpn/vpn.env
 # Ports come from the NixOS module; take them from the running unit definition.
 ports="$(systemctl show xray -p Environment --value)"
 tmp="$(mktemp)"; trap 'rm -f "$tmp"' EXIT

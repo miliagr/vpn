@@ -27,6 +27,7 @@
             ./nix/security.nix
             ./nix/monitoring.nix
             ./nix/xray.nix
+            ./nix/wireguard.nix
           ];
         })
         hosts;

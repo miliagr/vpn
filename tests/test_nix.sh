@@ -28,7 +28,7 @@ n_rules="$(grep -c 'dport 22 -j nixos-fw-accept' <<<"$rules")"
 [[ "$n_rules" == "$(wc -l <<<"$allowed" | tr -d ' ')" && -n "$allowed" ]] && pass 'one SSH accept rule per allowed source' || fail "SSH firewall rules ($n_rules) do not match hosts/ssh_allowed_ips"
 while IFS= read -r ip; do grep -q -- "-s $ip --dport 22" <<<"$rules" && pass "SSH allowed only from $ip" || fail "no SSH rule for $ip"; done <<<"$allowed"
 [[ "$(grep -c -- '--dport 22' <<<"$rules")" == "$n_rules" && "$rules" != *"-A nixos-fw -p tcp --dport 22"* ]] && pass 'no unconditional SSH rule' || fail 'unconditional SSH rule present'
-eq 'no inbound UDP' networking.firewall.allowedUDPPorts '[]'
+eq 'WireGuard port is an integer' vpn.wireguardPort '51820' # will override per-host
 eq 'fail2ban enabled' services.fail2ban.enable 'true'
 eq 'node exporter on localhost' services.prometheus.exporters.node.listenAddress '"127.0.0.1"'
 eq 'xray runs as a dynamic user' systemd.services.xray.serviceConfig.DynamicUser 'true'

@@ -24,6 +24,11 @@ in
   options.vpn = {
     universalPort = lib.mkOption { type = lib.types.port; default = 443; };
     xhttpPort = lib.mkOption { type = lib.types.port; default = 8443; };
+    wireguardPort = lib.mkOption {
+      type = lib.types.int;
+      default = 51820;
+      description = "WireGuard UDP listen port (randomized per host at setup time)";
+    };
     secretsFile = lib.mkOption {
       type = lib.types.path;
       default = "/var/lib/vpn/xray.env";
@@ -44,7 +49,7 @@ in
       serviceConfig = {
         DynamicUser = true;
         EnvironmentFile = cfg.secretsFile;
-        Environment = [ "UNIVERSAL_PORT=${toString cfg.universalPort}" "XHTTP_PORT=${toString cfg.xhttpPort}" ];
+        Environment = [ "UNIVERSAL_PORT=${toString cfg.universalPort}" "XHTTP_PORT=${toString cfg.xhttpPort}" "WG_PORT=${toString cfg.wireguardPort}" ];
         RuntimeDirectory = "xray";
         RuntimeDirectoryMode = "0700";
         ExecStartPre = "${xrayRender}/bin/xray-render /run/xray/config.json";

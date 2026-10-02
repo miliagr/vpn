@@ -42,7 +42,7 @@ Check:
 ## 2. Describe the server in the repository
 
 1. `.env.local` (git-ignored; `cp .env.example .env.local` if missing): set `<NAME>_ADDR` to the server's IP, where `<NAME>` is the host name upper-cased with `-` replaced by `_` (`aeza-de-n-1` -> `AEZA_DE_N_1_ADDR`).
-2. `hosts/hosts.json`: the key is the server name `<datacenter>-<country>-n-<number>` (it also becomes the profile name, `Family VPN aeza-de-n-1`); set `disk`:
+2. `hosts/hosts.json`: the key is the server name `<datacenter>-<country>-n-<number>` (it also becomes the profile name, `VPN aeza-de-n-1`); set `disk`:
    ```json
    "aeza-de-n-1": {"disk": "/dev/vda", "system": "x86_64-linux"}
    ```

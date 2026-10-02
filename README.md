@@ -1,4 +1,4 @@
-# Family VPN
+# VPN
 
 A small private VPN for the owner and parents: the same Xray stack (VLESS + REALITY) on independent VPS hosts, each one a **NixOS system declared in this repository**, plus generated mobile import profiles. It deliberately has **no subscription service, panel, database, billing, or public user management**.
 
@@ -7,10 +7,10 @@ A small private VPN for the owner and parents: the same Xray stack (VLESS + REAL
 ```text
 Android / v2rayNG                     iPhone / Streisand
       |                                      |
-      |---- Family VPN <server 1> ------------|
+      |---- VPN <server 1> ------------|
       |      VLESS + REALITY + Vision :443   |
       |                                      |
-      |---- Family VPN <server 2> ------------|
+      |---- VPN <server 2> ------------|
       |      VLESS + REALITY + Vision :443   |
       |                                      |
       +---- Android-only fallbacks --------->|
@@ -38,8 +38,9 @@ cp .env.example .env.local                  # once; set AEZA_DE_N_1_ADDR (your h
 ./scripts/nix-status.sh aeza-de-n-1
 ./scripts/nix-probe.sh aeza-de-n-1                 # real tunnel from your Mac
 
-./scripts/make-mobile-profiles.sh           # QR codes in build/mobile/
-# later, with 2+ servers: ./scripts/make-android-auto-profile.sh (Android auto-failover config)
+./scripts/make-mobile-profiles.sh           # VLESS QR codes in build/mobile/
+./scripts/make-wireguard-profiles.sh        # WireGuard QR codes in build/mobile/
+# later, with 2+ servers: ./scripts/make-android-auto-profile.sh (Android auto-failover config, VLESS only)
 ```
 
 Requirements on your Mac: Nix with flakes, `xray`, `jq`, `qrencode` (`brew install xray jq qrencode`; Nix: see the install guide). Run the scripts from an address listed in `hosts/ssh_allowed_ips`: servers accept SSH only from there, and only as the `admin` user (root login is disabled after the install).
@@ -49,17 +50,20 @@ Never commit or paste `.env.local`, `build/`, UUIDs, REALITY keys, short IDs, VL
 ## Mobile profiles
 
 ```text
-build/mobile/<host>-universal.png         one per host (aeza-de-n-1-universal.png, ...)
-build/mobile/<host>-xhttp-android.png     one per host, Android only
-build/mobile/android-auto.json            optional, needs 2+ servers, secrets inside
+build/mobile/<host>-universal.png         one per host, VLESS+REALITY+Vision
+build/mobile/<host>-xhttp-android.png     one per host, Android only, VLESS+XHTTP+REALITY
+build/mobile/<host>-wireguard-owner.png     per-user WireGuard profile (owner)
+build/mobile/<host>-wireguard-parent1.png   per-user WireGuard profile (parent1)
+build/mobile/<host>-wireguard-parent2.png   per-user WireGuard profile (parent2)
+build/mobile/android-auto.json            optional, needs 2+ servers, VLESS auto-failover, secrets inside
 ```
 
-Profile names are `Family VPN <host name>` (and `... XHTTP`), e.g. `Family VPN aeza-de-n-1`.
+Profile names: `VPN <host name>` (e.g. `VPN aeza-de-n-1`), `... XHTTP` (Android only), `... WireGuard (<user>)`.
 
 **Server naming:** `<datacenter>-<country>-n-<number>`, for example `aeza-de-n-1`. The name is the key in `hosts/hosts.json`, the profile name, and (upper-cased, `-` replaced by `_`) the prefix of its variables in `.env.local`: `AEZA_DE_N_1_ADDR`, `AEZA_DE_N_1_REALITY_PRIVATE_KEY`, ...
 
-- **Android (v2rayNG):** import every QR code (`*-universal.png`, `*-xhttp-android.png`). Use your main server's profile normally, another server's profile if it is unreachable, XHTTP profiles as extra fallbacks. Or import the auto-failover config (see [docs/nixos.md](docs/nixos.md#automatic-failover-android); importing it into the app is not yet verified).
-- **iPhone (Streisand):** import only the `*-universal.png` QR codes; with several servers switch manually if one is unreachable.
+- **Android (v2rayNG for VLESS, WireGuard app for WireGuard):** import every VLESS QR code (`*-universal.png`, `*-xhttp-android.png`). Use your main server's profile normally, another server's profile if it is unreachable, XHTTP profiles as extra fallbacks. Import your personal WireGuard profile (e.g., `*-wireguard-owner.png`) into the WireGuard app. Or import the auto-failover config (see [docs/nixos.md](docs/nixos.md#automatic-failover-android); importing it into the app is not yet verified).
+- **iPhone (Streisand for VLESS, WireGuard app for WireGuard):** import only the VLESS `*-universal.png` QR codes; with several servers switch manually if one is unreachable. Import your personal WireGuard profile into the WireGuard app.
 
 ## Operating it
 

@@ -83,8 +83,8 @@ Before declaring success, verify:
 ## Client UX
 
 For parents, favor simplicity over clever automatic balancing. Profile names come from the server names (`<datacenter>-<country>-n-<number>`, e.g. `aeza-de-n-1`), so the location is visible and manual fallback is obvious:
-- `Family VPN aeza-de-n-1`
-- `Family VPN aeza-de-n-1 XHTTP` (Android only)
+- `VPN aeza-de-n-1`
+- `VPN aeza-de-n-1 XHTTP` (Android only)
 
 Automatic failover exists as the optional Android-only `build/mobile/android-auto.json` (`scripts/make-android-auto-profile.sh`): a static client config with a health-checked balancer, no control plane or subscription service. Basic connectivity must keep working with the plain manual profiles; iPhone stays manual unless client support is verified.
 

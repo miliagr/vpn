@@ -31,7 +31,7 @@ Follow [install.md](install.md): inspect the VPS, fill `hosts/hosts.json` and `.
 1. Pick the name `<datacenter>-<country>-n-<number>` (for example `hetzner-fi-n-1`) and add it to `hosts/hosts.json`: `"hetzner-fi-n-1": {"disk": "...", "system": "x86_64-linux"}`. The name is also the profile name, so it shows where the server is.
 2. Add `HETZNER_FI_N_1_ADDR=` to `.env.local` (name upper-cased, `-` replaced by `_`); run `generate-secrets.sh`.
 3. `nix-validate.sh`, `nix-install.sh hetzner-fi-n-1 ...`, `nix-push-secrets.sh hetzner-fi-n-1 ...`, `nix-check.sh ...`.
-4. `make-mobile-profiles.sh` emits `hetzner-fi-n-1-universal` and `hetzner-fi-n-1-xhttp-android` automatically, named `Family VPN hetzner-fi-n-1` and `Family VPN hetzner-fi-n-1 XHTTP`.
+4. `make-mobile-profiles.sh` emits `hetzner-fi-n-1-universal` and `hetzner-fi-n-1-xhttp-android` automatically, named `VPN hetzner-fi-n-1` and `VPN hetzner-fi-n-1 XHTTP`.
 
 Renaming a host changes its profile name (re-import that QR code) and its `.env.local` variable prefix (rename the variables too).
 

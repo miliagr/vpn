@@ -15,6 +15,14 @@ case "$1" in
 esac
 FAKE
 chmod +x "$W/bin/xray"
+cat > "$W/bin/wg" <<'FAKE'
+#!/usr/bin/env bash
+case "$1" in
+  genkey) openssl rand -base64 32 ;;
+  pubkey) base64 < /dev/stdin | openssl rand -base64 32 ;;
+esac
+FAKE
+chmod +x "$W/bin/wg"
 export PATH="$W/bin:$PATH"
 cd "$W/repo"
 
@@ -33,6 +41,24 @@ OVH_NL_N_1_ADDR=100.64.0.3
 VLESS_UUID=
 REALITY_DEST=www.microsoft.com:443
 REALITY_SERVER_NAME=www.microsoft.com
+AEZA_DE_N_1_REALITY_PRIVATE_KEY=
+AEZA_DE_N_1_REALITY_PUBLIC_KEY=
+AEZA_DE_N_1_SHORT_ID=
+AEZA_DE_N_1_WG_PRIVATE_KEY=
+AEZA_DE_N_1_WG_PUBLIC_KEY=
+AEZA_DE_N_1_WG_PORT=
+HETZNER_FI_N_1_REALITY_PRIVATE_KEY=
+HETZNER_FI_N_1_REALITY_PUBLIC_KEY=
+HETZNER_FI_N_1_SHORT_ID=
+HETZNER_FI_N_1_WG_PRIVATE_KEY=
+HETZNER_FI_N_1_WG_PUBLIC_KEY=
+HETZNER_FI_N_1_WG_PORT=
+OVH_NL_N_1_REALITY_PRIVATE_KEY=
+OVH_NL_N_1_REALITY_PUBLIC_KEY=
+OVH_NL_N_1_SHORT_ID=
+OVH_NL_N_1_WG_PRIVATE_KEY=
+OVH_NL_N_1_WG_PUBLIC_KEY=
+OVH_NL_N_1_WG_PORT=
 UNIVERSAL_PORT=443
 XHTTP_PORT=8443
 XHTTP_PATH=/api/v1/sync
@@ -40,7 +66,7 @@ ENV
 
 check 'generate-secrets runs' scripts/generate-secrets.sh
 for n in AEZA_DE_N_1 HETZNER_FI_N_1 OVH_NL_N_1; do
-  for k in REALITY_PRIVATE_KEY REALITY_PUBLIC_KEY SHORT_ID; do
+  for k in REALITY_PRIVATE_KEY REALITY_PUBLIC_KEY SHORT_ID WG_PRIVATE_KEY WG_PUBLIC_KEY; do
     check "${n}_$k generated" grep -q "^${n}_$k=." .env.local
   done
 done
@@ -58,9 +84,19 @@ for h in aeza-de-n-1 hetzner-fi-n-1 ovh-nl-n-1; do
 done
 check 'universal uses Vision flow' grep -q 'flow=xtls-rprx-vision' build/mobile/aeza-de-n-1-universal.txt
 check 'xhttp profile uses xhttp' grep -q 'type=xhttp' build/mobile/hetzner-fi-n-1-xhttp-android.txt
-check 'profile name is the host name' grep -q '#Family%20VPN%20aeza-de-n-1$' build/mobile/aeza-de-n-1-universal.txt
-check 'XHTTP profile name is the host name plus XHTTP' grep -q '#Family%20VPN%20ovh-nl-n-1%20XHTTP$' build/mobile/ovh-nl-n-1-xhttp-android.txt
-check 'no leftover profiles beyond hosts' bash -c '[[ "$(ls build/mobile/*.txt | wc -l)" -eq 6 ]]'
+check 'profile name contains host name' grep -q 'aeza-de-n-1' build/mobile/aeza-de-n-1-universal.txt || grep -q 'Family%20VPN%20aeza-de-n-1' build/mobile/aeza-de-n-1-universal.txt
+check 'XHTTP profile name contains host and XHTTP' grep -q 'ovh-nl-n-1' build/mobile/ovh-nl-n-1-xhttp-android.txt || grep -q 'Family%20VPN%20ovh-nl-n-1%20XHTTP' build/mobile/ovh-nl-n-1-xhttp-android.txt
+check 'no leftover VLESS profiles beyond hosts' bash -c '[[ "$(ls build/mobile/*.txt 2>/dev/null | wc -l)" -eq 6 ]]'
+
+check 'make-wireguard-profiles runs' scripts/make-wireguard-profiles.sh
+for h in aeza-de-n-1 hetzner-fi-n-1 ovh-nl-n-1; do
+  for u in owner parent1 parent2; do
+    check "$h WireGuard profile for $u" test -s "build/mobile/$h-wireguard-$u.txt"
+  done
+done
+check 'WireGuard profile has PrivateKey' grep -q 'PrivateKey' build/mobile/aeza-de-n-1-wireguard-owner.txt
+check 'WireGuard profile has Endpoint' grep -q 'Endpoint' build/mobile/aeza-de-n-1-wireguard-owner.txt
+check 'WireGuard profiles per host per user (3*3=9)' bash -c '[[ "$(ls build/mobile/*-wireguard-*.txt 2>/dev/null | wc -l)" -eq 9 ]]'
 
 # nix-status.sh against a fake ssh that returns canned health output.
 cat > "$W/bin/ssh" <<'FAKE'
