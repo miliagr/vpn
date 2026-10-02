@@ -1,6 +1,6 @@
 { config, lib, pkgs, ... }:
 let
-  cfg = config.familyVpn;
+  cfg = config.vpn;
   sshPort = toString (builtins.head config.services.openssh.ports);
   sshAllowed = map lib.strings.trim (lib.filter
     (l: builtins.match "[[:space:]]*(#.*)?" l == null)
@@ -10,7 +10,7 @@ let
   blockedProtocols = [ "dccp" "sctp" "rds" "tipc" "ax25" "netrom" "rose" ];
 in
 {
-  options.familyVpn.adminUser = lib.mkOption {
+  options.vpn.adminUser = lib.mkOption {
     type = lib.types.str;
     default = "admin";
     description = "The only account that can log in over SSH; root login is disabled.";

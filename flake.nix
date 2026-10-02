@@ -1,5 +1,5 @@
 {
-  description = "Private family VPN on NixOS";
+  description = "Private VPN on NixOS";
 
   inputs = {
     # Xray's current config syntax ("raw", "target") needs a recent xray; flake.lock pins the exact revision.
@@ -23,6 +23,7 @@
             disko.nixosModules.disko
             ./nix/common.nix
             ./nix/disk.nix
+            ./nix/network.nix
             ./nix/security.nix
             ./nix/monitoring.nix
             ./nix/xray.nix

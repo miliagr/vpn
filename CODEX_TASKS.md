@@ -68,4 +68,4 @@ Do not treat a successful test from a non-Russian network as proof that the setu
 
 ## Optional later improvement: per-person UUIDs
 
-The initial repository intentionally uses a single family UUID for simplicity. If the user asks for revocation per device/person, extend the Xray `clients` list and QR generation so the owner and each parent receive a distinct UUID. Keep the same server keys. Do not introduce a subscription backend just for this.
+The initial repository intentionally uses a single UUID for simplicity. If the user asks for revocation per device/person, extend the Xray `clients` list and QR generation so the owner and each parent receive a distinct UUID. Keep the same server keys. Do not introduce a subscription backend just for this.

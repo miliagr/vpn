@@ -1,15 +1,15 @@
 { config, lib, pkgs, ... }:
 let
-  cfg = config.familyVpn;
-  metricsDir = "/var/lib/family-vpn-metrics";
+  cfg = config.vpn;
+  metricsDir = "/var/lib/vpn-metrics";
 
   # Writes Prometheus textfile metrics; node_exporter (localhost only) serves them.
   # Only aggregate per-inbound byte counters are read from Xray, never per-client or per-destination data.
   health = pkgs.writeShellApplication {
-    name = "family-vpn-health";
+    name = "vpn-health";
     runtimeInputs = with pkgs; [ coreutils iproute2 systemd jq curl gnugrep ];
     text = ''
-      out=${metricsDir}/family_vpn.prom
+      out=${metricsDir}/vpn.prom
       hist=${metricsDir}/history.csv
       tmp="$out.$$"
       now=$(date +%s)
@@ -22,7 +22,7 @@ let
       for port in ${toString [ cfg.universalPort cfg.xhttpPort ]}; do
         if [ -n "$(ss -lntH "sport = :$port")" ]; then v=1; else v=0; vpn_ports_ok=0; fi
         port_lines="$port_lines
-      family_vpn_port_listening{port=\"$port\"} $v"
+      vpn_port_listening{port=\"$port\"} $v"
       done
       vpn_up=$((xray_up * vpn_ports_ok))
 
@@ -39,25 +39,25 @@ let
       fi
 
       {
-        echo "family_vpn_xray_up $xray_up"
-        echo "family_vpn_up $vpn_up"
+        echo "vpn_xray_up $xray_up"
+        echo "vpn_up $vpn_up"
         echo "$port_lines" | grep .
-        echo "family_vpn_established_connections $conns"
-        echo "family_vpn_online_source_ips $online"
-        echo "family_vpn_net_rx_bytes_total{iface=\"$iface\"} $rx"
-        echo "family_vpn_net_tx_bytes_total{iface=\"$iface\"} $tx"
-        echo "family_vpn_failed_units $(systemctl --failed --no-legend | grep -c . || true)"
-        echo "family_vpn_root_disk_used_percent $(df --output=pcent / | tail -n 1 | tr -dc '0-9')"
+        echo "vpn_established_connections $conns"
+        echo "vpn_online_source_ips $online"
+        echo "vpn_net_rx_bytes_total{iface=\"$iface\"} $rx"
+        echo "vpn_net_tx_bytes_total{iface=\"$iface\"} $tx"
+        echo "vpn_failed_units $(systemctl --failed --no-legend | grep -c . || true)"
+        echo "vpn_root_disk_used_percent $(df --output=pcent / | tail -n 1 | tr -dc '0-9')"
         if [ "$(readlink /run/booted-system/kernel)" = "$(readlink /run/current-system/kernel)" ]; then r=0; else r=1; fi
-        echo "family_vpn_reboot_required $r"
+        echo "vpn_reboot_required $r"
         if stats="$(curl -fsS --max-time 3 http://127.0.0.1:11111/debug/vars 2>/dev/null)"; then
-          echo 'family_vpn_xray_metrics_up 1'
+          echo 'vpn_xray_metrics_up 1'
           echo "$stats" | jq -r '(.stats.inbound // {}) | to_entries[] | .key as $t | .value | to_entries[]
-            | "family_vpn_xray_inbound_bytes_total{inbound=\"\($t)\",direction=\"\(.key)\"} \(.value)"'
+            | "vpn_xray_inbound_bytes_total{inbound=\"\($t)\",direction=\"\(.key)\"} \(.value)"'
         else
-          echo 'family_vpn_xray_metrics_up 0'
+          echo 'vpn_xray_metrics_up 0'
         fi
-        echo "family_vpn_health_last_run_timestamp_seconds $now"
+        echo "vpn_health_last_run_timestamp_seconds $now"
       } > "$tmp"
       mv "$tmp" "$out"
 
@@ -83,11 +83,11 @@ in
   systemd.tmpfiles.rules = [ "d ${metricsDir} 0755 root root -" ];
   environment.systemPackages = [ health ];
 
-  systemd.services.family-vpn-health = {
-    description = "Write family VPN health metrics";
+  systemd.services.vpn-health = {
+    description = "Write VPN health metrics";
     serviceConfig = {
       Type = "oneshot";
-      ExecStart = "${health}/bin/family-vpn-health";
+      ExecStart = "${health}/bin/vpn-health";
       ReadWritePaths = [ metricsDir ];
       ProtectSystem = "strict";
       ProtectHome = true;
@@ -95,7 +95,7 @@ in
       NoNewPrivileges = true;
     };
   };
-  systemd.timers.family-vpn-health = {
+  systemd.timers.vpn-health = {
     wantedBy = [ "timers.target" ];
     timerConfig = { OnBootSec = "1min"; OnUnitActiveSec = "1min"; };
   };

@@ -1,6 +1,6 @@
 { config, lib, pkgs, ... }:
 let
-  cfg = config.familyVpn;
+  cfg = config.vpn;
 
   # Reuse the single Xray template: __NAME__ placeholders become ${NAME} for envsubst.
   template = pkgs.runCommand "xray-template.json" { } ''
@@ -21,12 +21,12 @@ let
   '';
 in
 {
-  options.familyVpn = {
+  options.vpn = {
     universalPort = lib.mkOption { type = lib.types.port; default = 443; };
     xhttpPort = lib.mkOption { type = lib.types.port; default = 8443; };
     secretsFile = lib.mkOption {
       type = lib.types.path;
-      default = "/var/lib/family-vpn/xray.env";
+      default = "/var/lib/vpn/xray.env";
       description = "Runtime-only env file with per-host secrets; pushed by scripts/nix-push-secrets.sh, never in the Nix store.";
     };
   };
@@ -36,7 +36,7 @@ in
     networking.firewall.allowedTCPPorts = [ cfg.universalPort cfg.xhttpPort ];
 
     systemd.services.xray = {
-      description = "Xray (VLESS + REALITY) for the family VPN";
+      description = "Xray (VLESS + REALITY) for the VPN";
       wantedBy = [ "multi-user.target" ];
       after = [ "network-online.target" ];
       wants = [ "network-online.target" ];

@@ -1,6 +1,6 @@
 # AGENTS.md — instructions for Codex / AI agents
 
-You are maintaining a small **private family VPN** repository. The users are the owner and their parents. There is no commercial service, subscription backend, billing, public registration, or multi-tenant panel.
+You are maintaining a small **private VPN** repository. The users are the owner and their parents. There is no commercial service, subscription backend, billing, public registration, or multi-tenant panel.
 
 ## Target outcome
 
@@ -58,7 +58,7 @@ Later changes: `./scripts/nix-validate.sh`, then `./scripts/nix-deploy.sh <host>
 
 ## Server expectations
 
-**NixOS is the target** (see `docs/install.md`, `docs/nixos.md`, `flake.nix`, `hosts/hosts.json`); use the `scripts/nix-*.sh` workflow. On NixOS the equivalents of the config-safety rules are: config rendered from the template at start and tested in `ExecStartPre`, secrets only in `/var/lib/family-vpn/xray.env` (never the Nix store), and generation rollback instead of manual backups.
+**NixOS is the target** (see `docs/install.md`, `docs/nixos.md`, `flake.nix`, `hosts/hosts.json`); use the `scripts/nix-*.sh` workflow. On NixOS the equivalents of the config-safety rules are: config rendered from the template at start and tested in `ExecStartPre`, secrets only in `/var/lib/vpn/xray.env` (never the Nix store), and generation rollback instead of manual backups.
 
 Each VPS should have:
 - Xray-core managed by systemd (on NixOS: the `xray` unit from `nix/xray.nix`).

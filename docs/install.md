@@ -80,7 +80,7 @@ Xray is installed but does not start yet; it waits for its secrets.
 ```bash
 ./scripts/nix-push-secrets.sh aeza-de-n-1 admin@SERVER_IP
 ```
-This copies the host's secrets from `.env.local` to `/var/lib/family-vpn/xray.env` (root-only, never in git or the Nix store), renders the config, runs `xray run -test`, and only then restarts Xray. A bad value keeps the previous file.
+This copies the host's secrets from `.env.local` to `/var/lib/vpn/xray.env` (root-only, never in git or the Nix store), renders the config, runs `xray run -test`, and only then restarts Xray. A bad value keeps the previous file.
 
 ## 6. Verify
 

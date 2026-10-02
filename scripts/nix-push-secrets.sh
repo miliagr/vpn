@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sends this host's secrets from .env.local to /var/lib/family-vpn/xray.env, validates them, then (re)starts xray.
+# Sends this host's secrets from .env.local to /var/lib/vpn/xray.env, validates them, then (re)starts xray.
 # Secrets travel over ssh stdin, never on a command line or in stdout.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -21,16 +21,16 @@ done
   printf 'REALITY_DEST=%s\n' "$REALITY_DEST"
   printf 'REALITY_SERVER_NAME=%s\n' "$REALITY_SERVER_NAME"
   printf 'XHTTP_PATH=%s\n' "$XHTTP_PATH"
-} | ssh "$target" 'sudo sh -c "umask 077; install -d -m 700 /var/lib/family-vpn; cat > /var/lib/family-vpn/xray.env.new"'
+} | ssh "$target" 'sudo sh -c "umask 077; install -d -m 700 /var/lib/vpn; cat > /var/lib/vpn/xray.env.new"'
 
 ssh "$target" 'sudo bash -s' <<'REMOTE'
 set -euo pipefail
-new=/var/lib/family-vpn/xray.env.new
-cur=/var/lib/family-vpn/xray.env
+new=/var/lib/vpn/xray.env.new
+cur=/var/lib/vpn/xray.env
 # Ports come from the NixOS module; take them from the running unit definition.
 ports="$(systemctl show xray -p Environment --value)"
 tmp="$(mktemp)"; trap 'rm -f "$tmp"' EXIT
-( set -a; . "$new"; for kv in $ports; do export "$kv"; done; set +a; xray-render "$tmp" ) || { echo 'New secrets failed the Xray config test; keeping the old ones.' >&2; rm -f "$new"; exit 1; }
+( set -a; . "$new"; for kv in $ports; do export "$kv"; done; set +a; /run/current-system/sw/bin/xray-render "$tmp" ) || { echo 'New secrets failed the Xray config test; keeping the old ones.' >&2; rm -f "$new"; exit 1; }
 [[ -f "$cur" ]] && cp -a "$cur" "$cur.bak.$(date +%Y%m%d%H%M%S)"
 mv "$new" "$cur"
 systemctl restart xray

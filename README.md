@@ -76,10 +76,10 @@ Details, security hardening, monitoring, replacing servers: [docs/nixos.md](docs
 
 ## Security model
 
-- Secrets live only in `.env.local` (local) and `/var/lib/family-vpn/xray.env` (root-only, on each server); never in git or the Nix store.
+- Secrets live only in `.env.local` (local) and `/var/lib/vpn/xray.env` (root-only, on each server); never in git or the Nix store.
 - Servers: immutable accounts, key-only SSH from allowed addresses only, default-deny firewall (443/8443 TCP public), fail2ban, hardened kernel settings, sandboxed Xray that blackholes private/loopback destinations, no access logs. Monitoring is localhost-only and pull-based.
 - The owner of the server can technically see destinations of unencrypted traffic, as with any VPN; third parties on the network path cannot decrypt it.
-- One family VLESS UUID is used for simplicity; per-person UUIDs can be added later (see `CODEX_TASKS.md`).
+- One VLESS UUID is used for simplicity; per-person UUIDs can be added later (see `CODEX_TASKS.md`).
 
 ## Repository layout
 
@@ -108,7 +108,7 @@ Open the folder in Codex or Claude Code (they read `AGENTS.md` / `CLAUDE.md`) an
 
 ```text
 Read AGENTS.md and CODEX_TASKS.md completely and follow them.
-Prepare and deploy this private family VPN to my VPS hosts using the NixOS workflow.
+Prepare and deploy this private VPN to my VPS hosts using the NixOS workflow.
 Keep all secrets local and never print UUIDs, REALITY private keys, short IDs, or VLESS URIs in chat.
 Ask before any step that erases a disk, and verify each VPS before moving to the next one.
 At the end tell me only which QR files to import into v2rayNG on Android and Streisand on iPhone.

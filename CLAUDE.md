@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Private family VPN: the same Xray stack (VLESS + REALITY) deployed to independent VPS hosts, declared as NixOS systems (`flake.nix`, `hosts/hosts.json`; currently one server, add more by adding an entry), plus generated mobile import profiles (QR codes). No panel, database, subscription server, or Docker.
+Private VPN: the same Xray stack (VLESS + REALITY) deployed to independent VPS hosts, declared as NixOS systems (`flake.nix`, `hosts/hosts.json`; currently one server, add more by adding an entry), plus generated mobile import profiles (QR codes). No panel, database, subscription server, or Docker.
 
 @AGENTS.md
 @CODEX_TASKS.md

@@ -14,7 +14,7 @@ nix/disk.nix         disko partitioning (BIOS+EFI GPT, ext4)
 nix/xray.nix         Xray systemd unit; config rendered at start from server/xray-server.template.json
 ```
 
-Secrets never enter git or the Nix store. `.env.local` holds them locally; `scripts/nix-push-secrets.sh` writes a per-host `/var/lib/family-vpn/xray.env` (root, 0600) over ssh. The unit renders and tests the config (`xray run -test`) in `ExecStartPre`, and stays skipped until that file exists.
+Secrets never enter git or the Nix store. `.env.local` holds them locally; `scripts/nix-push-secrets.sh` writes a per-host `/var/lib/vpn/xray.env` (root, 0600) over ssh. The unit renders and tests the config (`xray run -test`) in `ExecStartPre`, and stays skipped until that file exists.
 
 ## Local prerequisites
 Nix with flakes (`curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install`), `xray`, `jq`, `qrencode`. `flake.lock` is committed; refresh it with `nix flake update`. Both hosts were evaluated against nixpkgs `nixos-unstable` (NixOS 26.11 pre-release); the unit itself has not yet run on a real server.
@@ -64,9 +64,9 @@ Self-hosted and pull-based; no third-party service, nothing reachable from the I
 | Is each server healthy, who is online, how loaded is the network? | `./scripts/nix-status.sh [--quiet] [host...]` | SSH summary: xray/ports/firewall/fail2ban, failed units, disk, reboot needed, **online source IPs**, connections, **live network Mbit/s** (2 s sample). Exit 1 on any problem; run from cron/launchd. |
 | What happened over the last hours/days? | `./scripts/nix-history.sh <host> [hours]` | Availability %, average/peak online, peak Mbit/s and traffic volume from the per-minute history kept on the server for 7 days. |
 
-**"Online" is approximate:** the number of distinct source IPs with an established connection on the VPN ports. Devices behind one router count once, and a device switching networks briefly counts twice. The family shares one UUID, so Xray cannot tell people apart; per-person UUIDs (see `CODEX_TASKS.md`) would allow per-person counts. Only the count is stored, never addresses.
+**"Online" is approximate:** the number of distinct source IPs with an established connection on the VPN ports. Devices behind one router count once, and a device switching networks briefly counts twice. Users share one UUID, so Xray cannot tell people apart; per-person UUIDs (see `CODEX_TASKS.md`) would allow per-person counts. Only the count is stored, never addresses.
 
-On each host, `node_exporter` listens on `127.0.0.1:9100` and the `family-vpn-health` timer (every minute) writes `/var/lib/family-vpn-metrics/family_vpn.prom` (`family_vpn_up`, `family_vpn_online_source_ips`, `family_vpn_established_connections`, `family_vpn_net_{rx,tx}_bytes_total`, xray/ports/disk/reboot flags, per-inbound Xray byte counters) and appends to `history.csv` (`ts,vpn_up,online,connections,rx_bytes,tx_bytes`). No per-client or per-destination data is collected.
+On each host, `node_exporter` listens on `127.0.0.1:9100` and the `vpn-health` timer (every minute) writes `/var/lib/vpn-metrics/vpn.prom` (`vpn_up`, `vpn_online_source_ips`, `vpn_established_connections`, `vpn_net_{rx,tx}_bytes_total`, xray/ports/disk/reboot flags, per-inbound Xray byte counters) and appends to `history.csv` (`ts,vpn_up,online,connections,rx_bytes,tx_bytes`). No per-client or per-destination data is collected.
 
 Raw metrics: `ssh -L 9100:127.0.0.1:9100 admin@ip`, then open `http://127.0.0.1:9100/metrics`. Alert delivery (mail, push) is deliberately not built in: it would need an external service or credentials; react to the non-zero exit of `nix-status.sh`/`nix-probe.sh` locally.
 

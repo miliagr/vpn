@@ -4,6 +4,12 @@ Every commit must update this file (enforced by `.githooks/pre-commit`; enable w
 
 ## Unreleased
 
+### Changed
+- Renamed service and paths from `family-vpn-*` to `vpn-*`: `family-vpn-health` → `vpn-health`, `/var/lib/family-vpn` → `/var/lib/vpn`, `/var/lib/family-vpn-metrics` → `/var/lib/vpn-metrics`, `family_vpn.prom` → `vpn.prom`, metrics `family_vpn_*` → `vpn_*`. Requires server reinstall.
+
+### Fixed
+- `nix-push-secrets.sh` now calls `/run/current-system/sw/bin/xray-render` instead of bare `xray-render` inside the `sudo bash -s` block: sudo's `secure_path` doesn't include the Nix profile, so the config test failed with `xray-render: command not found` and the script kept the old secrets.
+
 ### Added
 - `nix-install.sh` forwards extra options to nixos-anywhere (`--debug`, `--kexec-extra-flags ...`). Needed on Ubuntu 26.04 at Aeza, where the kernel rejects the unsigned installer kernel through the file-based kexec call (`PEFILE: Unsigned PE binary`, "Kexec failed"); the install guide's troubleshooting table documents the `--kexec-extra-flags "--kexec-syscall"` workaround.
 

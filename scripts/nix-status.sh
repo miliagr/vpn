@@ -20,23 +20,23 @@ for host in "${hosts[@]}"; do
   refuse_placeholder "${!addr_v}" || { rc=1; continue; }
   if ! out="$(ssh -o BatchMode=yes -o ConnectTimeout=10 "$ADMIN_USER@${!addr_v}" 'bash -s' 2>&1 <<'REMOTE'
 set -u
-m=/var/lib/family-vpn-metrics/family_vpn.prom
+m=/var/lib/vpn-metrics/vpn.prom
 val() { awk -v k="$1" 'index($0,k)==1 {print $NF; exit}' "$m" 2>/dev/null; }
-now=$(date +%s); last=$(val family_vpn_health_last_run_timestamp_seconds); last=${last:-0}
+now=$(date +%s); last=$(val vpn_health_last_run_timestamp_seconds); last=${last:-0}
 echo "xray_active=$(systemctl is-active xray)"
-echo "xray_up=$(val family_vpn_xray_up)"
-echo "vpn_up=$(val family_vpn_up)"
-echo "port_443=$(val 'family_vpn_port_listening{port="443"}')"
-echo "port_8443=$(val 'family_vpn_port_listening{port="8443"}')"
-echo "failed_units=$(val family_vpn_failed_units)"
-echo "disk_used_percent=$(val family_vpn_root_disk_used_percent)"
-echo "reboot_required=$(val family_vpn_reboot_required)"
+echo "xray_up=$(val vpn_xray_up)"
+echo "vpn_up=$(val vpn_up)"
+echo "port_443=$(val 'vpn_port_listening{port="443"}')"
+echo "port_8443=$(val 'vpn_port_listening{port="8443"}')"
+echo "failed_units=$(val vpn_failed_units)"
+echo "disk_used_percent=$(val vpn_root_disk_used_percent)"
+echo "reboot_required=$(val vpn_reboot_required)"
 echo "health_age_seconds=$((now - last))"
 echo "firewall=$(systemctl is-active firewall)"
 echo "fail2ban=$(systemctl is-active fail2ban)"
 echo "banned_ips=$(sudo fail2ban-client status sshd 2>/dev/null | awk -F: '/Currently banned/ {gsub(/ /,"",$2); print $2}')"
-echo "online_source_ips=$(val family_vpn_online_source_ips)"
-echo "connections=$(val family_vpn_established_connections)"
+echo "online_source_ips=$(val vpn_online_source_ips)"
+echo "connections=$(val vpn_established_connections)"
 iface=$(ip -o route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i <= NF; i++) if ($i == "dev") {print $(i + 1); exit}}')
 if [ -n "$iface" ]; then
   rx1=$(cat "/sys/class/net/$iface/statistics/rx_bytes"); tx1=$(cat "/sys/class/net/$iface/statistics/tx_bytes"); sleep 2
