@@ -1,0 +1,21 @@
+@@ -37,6 +41,20 @@
+         RemainAfterExit = "yes";
+       };
+     };
++
++    systemd.services.wireguard-firewall = {
++      description = "Open WireGuard port dynamically";
++      wantedBy = [ "network-pre.target" ];
++      before = [ "wg-quick-wg0.service" "systemd-networkd.service" ];
++      unitConfig.ConditionPathExists = cfg.secretsFile;
++      path = [ pkgs.iptables ];
++      serviceConfig = {
++        Type = "oneshot";
++        User = "root";
++        ExecStart = "${pkgs.bash}/bin/bash -c 'source ${cfg.secretsFile} && iptables -I nixos-fw -p udp -m udp --dport $WG_PORT -j nixos-fw-accept'";
++        RemainAfterExit = "yes";
++      };
++    };
+   };
+ }
+ 

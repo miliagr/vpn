@@ -1,4 +1,4 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, hostCfg, ... }:
 let
   cfg = config.vpn;
 
@@ -25,9 +25,9 @@ in
     universalPort = lib.mkOption { type = lib.types.port; default = 443; };
     xhttpPort = lib.mkOption { type = lib.types.port; default = 8443; };
     wireguardPort = lib.mkOption {
-      type = lib.types.int;
-      default = 51820;
-      description = "WireGuard UDP listen port (randomized per host at setup time)";
+      type = lib.types.port;
+      default = hostCfg.wireguardPort or 51820;
+      description = "WireGuard UDP listen port shared with generated client profiles.";
     };
     secretsFile = lib.mkOption {
       type = lib.types.path;
@@ -49,7 +49,7 @@ in
       serviceConfig = {
         DynamicUser = true;
         EnvironmentFile = cfg.secretsFile;
-        Environment = [ "UNIVERSAL_PORT=${toString cfg.universalPort}" "XHTTP_PORT=${toString cfg.xhttpPort}" "WG_PORT=${toString cfg.wireguardPort}" ];
+        Environment = [ "UNIVERSAL_PORT=${toString cfg.universalPort}" "XHTTP_PORT=${toString cfg.xhttpPort}" ];
         RuntimeDirectory = "xray";
         RuntimeDirectoryMode = "0700";
         ExecStartPre = "${xrayRender}/bin/xray-render /run/xray/config.json";

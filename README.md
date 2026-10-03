@@ -62,6 +62,8 @@ Profile names: `VPN <host name>` (e.g. `VPN aeza-de-n-1`), `... XHTTP` (Android 
 
 **Server naming:** `<datacenter>-<country>-n-<number>`, for example `aeza-de-n-1`. The name is the key in `hosts/hosts.json`, the profile name, and (upper-cased, `-` replaced by `_`) the prefix of its variables in `.env.local`: `AEZA_DE_N_1_ADDR`, `AEZA_DE_N_1_REALITY_PRIVATE_KEY`, ...
 
+WireGuard's UDP listen/firewall port is set once per host as `wireguardPort` in `hosts/hosts.json`. Both the NixOS server configuration and generated client profiles use that value; it is not a secret or an `.env.local` variable.
+
 - **Android (v2rayNG for VLESS, WireGuard app for WireGuard):** import every VLESS QR code (`*-universal.png`, `*-xhttp-android.png`). Use your main server's profile normally, another server's profile if it is unreachable, XHTTP profiles as extra fallbacks. Import your personal WireGuard profile (e.g., `*-wireguard-owner.png`) into the WireGuard app. Or import the auto-failover config (see [docs/nixos.md](docs/nixos.md#automatic-failover-android); importing it into the app is not yet verified).
 - **iPhone (Streisand for VLESS, WireGuard app for WireGuard):** import only the VLESS `*-universal.png` QR codes; with several servers switch manually if one is unreachable. Import your personal WireGuard profile into the WireGuard app.
 

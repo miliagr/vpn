@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generate per-user WireGuard client configurations as .conf and .png QR codes.
+# Generate per-user WireGuard client configurations as .txt and .png QR codes.
 # One profile per user per host (owner, parent1, parent2, etc.).
 # Usage: make-wireguard-profiles.sh [host-name...]  (default: every host in hosts/hosts.json)
 set -euo pipefail
@@ -20,36 +20,31 @@ if [[ $# -gt 0 ]]; then hosts=("$@"); else hosts=(); while IFS= read -r h; do ho
 
 for host in "${hosts[@]}"; do
   n="$(host_prefix "$host")"
-  addr_v="${n}_ADDR"; wg_pub_v="${n}_WG_PUBLIC_KEY"
+  addr_v="${n}_ADDR"; wg_pub_v="${n}_WG_PUBLIC_KEY"; wg_port_v="${n}_WG_PORT"
   
-  for v in "$addr_v" "$wg_pub_v"; do
+  for v in "$addr_v" "$wg_pub_v" "$wg_port_v"; do
     [[ -n "${!v:-}" ]] || { echo "$host: missing $v in .env.local" >&2; exit 1; }
   done
-  jq -e --arg h "$host" 'has($h)' "$ROOT/hosts/hosts.json" >/dev/null || { echo "$host: not in hosts/hosts.json" >&2; exit 1; }
-  server_wg_port="$(jq -er --arg h "$host" '.[$h].wireguardPort // 51820 | select(type == "number" and floor == . and . >= 1 and . <= 65535)' "$ROOT/hosts/hosts.json")" \
-    || { echo "$host: wireguardPort must be an integer from 1 to 65535 in hosts/hosts.json" >&2; exit 1; }
   
   refuse_placeholder "${!addr_v}" || exit 1
   
   server_addr="${!addr_v}"
   server_pubkey="${!wg_pub_v}"
+  server_wg_port="${!wg_port_v}"
   
   # Generate a client profile for each user
   for user in "${users[@]}"; do
-    priv_var="WG_CLIENT_$(echo "$user" | tr 'a-z' 'A-Z')_PRIV"
-    client_privkey="${!priv_var:-}"
-    [[ -n "$client_privkey" ]] || { echo "$priv_var missing in .env.local; run generate-secrets.sh" >&2; exit 1; }
-    
-    client_ip="$(jq -r --arg u "$user" '.[$u].ip' "$ROOT/hosts/wireguard_clients.json")"
+    client_privkey="$(wg genkey)"
+    client_pubkey="$(printf '%s' "$client_privkey" | wg pubkey)"
     
     # WireGuard client config per user
     profile_name="Family VPN $host WireGuard ($user)"
-    conf_file="$ROOT/build/mobile/${host}-wireguard-${user}.conf"
+    conf_file="$ROOT/build/mobile/${host}-wireguard-${user}.txt"
     
     cat > "$conf_file" <<CONFEOF
 [Interface]
 PrivateKey = $client_privkey
-Address = $client_ip/24
+Address = 10.0.0.$((2 + $(echo "$user" | md5sum | cut -c1-2 | xargs printf '%d' 2>/dev/null || echo 0) % 252 + 1))/24
 DNS = 8.8.8.8, 1.1.1.1
 
 [Peer]

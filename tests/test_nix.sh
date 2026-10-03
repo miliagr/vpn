@@ -28,10 +28,21 @@ n_rules="$(grep -c 'dport 22 -j nixos-fw-accept' <<<"$rules")"
 [[ "$n_rules" == "$(wc -l <<<"$allowed" | tr -d ' ')" && -n "$allowed" ]] && pass 'one SSH accept rule per allowed source' || fail "SSH firewall rules ($n_rules) do not match hosts/ssh_allowed_ips"
 while IFS= read -r ip; do grep -q -- "-s $ip --dport 22" <<<"$rules" && pass "SSH allowed only from $ip" || fail "no SSH rule for $ip"; done <<<"$allowed"
 [[ "$(grep -c -- '--dport 22' <<<"$rules")" == "$n_rules" && "$rules" != *"-A nixos-fw -p tcp --dport 22"* ]] && pass 'no unconditional SSH rule' || fail 'unconditional SSH rule present'
-eq 'WireGuard port is an integer' vpn.wireguardPort '51820' # will override per-host
+eq 'WireGuard port comes from the host configuration' vpn.wireguardPort "$(jq -r --arg h "$h" '.[$h].wireguardPort // 51820' hosts/hosts.json)"
 eq 'fail2ban enabled' services.fail2ban.enable 'true'
 eq 'node exporter on localhost' services.prometheus.exporters.node.listenAddress '"127.0.0.1"'
 eq 'xray runs as a dynamic user' systemd.services.xray.serviceConfig.DynamicUser 'true'
+eq 'WireGuard enabled' networking.wireguard.enable 'true'
+eq 'WireGuard listen port matches host configuration' networking.wireguard.interfaces.wg0.listenPort "$(jq -r --arg h "$h" '.[$h].wireguardPort // 51820' hosts/hosts.json)"
+eq 'WireGuard UDP firewall port matches host configuration' networking.firewall.allowedUDPPorts "[$(jq -r --arg h "$h" '.[$h].wireguardPort // 51820' hosts/hosts.json)]"
+eq 'NAT enabled' networking.nat.enable 'true'
+eq 'NAT internal interfaces includes wg0' networking.nat.internalInterfaces '["wg0"]'
+while IFS= read -r host; do
+  port="$(jq -r --arg h "$host" '.[$h].wireguardPort // 51820' hosts/hosts.json)"
+  actual="$(nix eval --json ".#nixosConfigurations.$host.config.vpn.wireguardPort" 2>/dev/null)"
+  [[ "$actual" == "$port" ]] && pass "$host WireGuard server port matches hosts.json" || fail "$host WireGuard server port differs from hosts.json"
+done < <(jq -r 'keys_unsorted[]' hosts/hosts.json)
+
 
 # Validate the real template with the real Xray (same version nixpkgs ships).
 X="$(nix build nixpkgs#xray --no-link --print-out-paths 2>/dev/null)/bin/xray"

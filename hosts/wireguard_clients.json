@@ -1,0 +1,14 @@
+{
+  "owner": {
+    "publicKey": "Dl/cfqKdyZF7YNUw688gleJVHXyEi3evIw6WWyDcJ1c=",
+    "ip": "10.42.0.2"
+  },
+  "parent1": {
+    "publicKey": "ozLxcNpf51sMxHqEwkenBnZhS28pzGQM6BkJ0n2tKyk=",
+    "ip": "10.42.0.3"
+  },
+  "parent2": {
+    "publicKey": "t+Bq3hyufmRVt7musz76TK9vrnhC8IHnAYHVZeZNcE8=",
+    "ip": "10.42.0.4"
+  }
+}

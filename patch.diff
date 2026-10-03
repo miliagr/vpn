@@ -1,0 +1,30 @@
+--- scripts/generate-secrets.sh
++++ scripts/generate-secrets.sh
+@@ -51,5 +51,28 @@
+   fi
+ done < <(jq -r 'keys_unsorted[]' "$ROOT/hosts/hosts.json")
+ 
++CLIENTS_FILE="$ROOT/hosts/wireguard_clients.json"
++if [[ ! -f "$CLIENTS_FILE" ]]; then
++  echo "{}" > "$CLIENTS_FILE"
++fi
++
++users=("owner" "parent1" "parent2")
++ip_counter=2
++for user in "${users[@]}"; do
++  priv_var="WG_CLIENT_$(echo "$user" | tr 'a-z' 'A-Z')_PRIV"
++  if [[ -z "$(get_value "$priv_var")" ]]; then
++    priv_val="$(wg genkey)"
++    pub_val="$(printf '%s' "$priv_val" | wg pubkey)"
++    set_value "$priv_var" "$priv_val"
++    
++    # Add to clients JSON
++    ip="10.0.0.$ip_counter"
++    tmp="$(mktemp)"
++    jq --arg u "$user" --arg p "$pub_val" --arg ip "$ip" '.[$u] = {publicKey: $p, ip: $ip}' "$CLIENTS_FILE" > "$tmp"
++    mv "$tmp" "$CLIENTS_FILE"
++  fi
++  ((ip_counter++))
++done
++
+ echo 'Secrets generated and stored in .env.local (values intentionally not printed).'

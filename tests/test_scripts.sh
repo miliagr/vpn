@@ -29,9 +29,9 @@ cd "$W/repo"
 # Fixture: three hosts named <datacenter>-<country>-n-<number>, so env prefixes with "-" -> "_" are exercised.
 cat > hosts/hosts.json <<'JSON'
 {
-  "aeza-de-n-1": {"disk": "/dev/vda", "system": "x86_64-linux"},
-  "hetzner-fi-n-1": {"disk": "/dev/vda", "system": "x86_64-linux"},
-  "ovh-nl-n-1": {"disk": "/dev/vda", "system": "x86_64-linux"}
+  "aeza-de-n-1": {"disk": "/dev/vda", "system": "x86_64-linux", "wireguardPort": 51820},
+  "hetzner-fi-n-1": {"disk": "/dev/vda", "system": "x86_64-linux", "wireguardPort": 51821},
+  "ovh-nl-n-1": {"disk": "/dev/vda", "system": "x86_64-linux", "wireguardPort": 51822}
 }
 JSON
 cat > .env.example <<'ENV'
@@ -46,19 +46,16 @@ AEZA_DE_N_1_REALITY_PUBLIC_KEY=
 AEZA_DE_N_1_SHORT_ID=
 AEZA_DE_N_1_WG_PRIVATE_KEY=
 AEZA_DE_N_1_WG_PUBLIC_KEY=
-AEZA_DE_N_1_WG_PORT=
 HETZNER_FI_N_1_REALITY_PRIVATE_KEY=
 HETZNER_FI_N_1_REALITY_PUBLIC_KEY=
 HETZNER_FI_N_1_SHORT_ID=
 HETZNER_FI_N_1_WG_PRIVATE_KEY=
 HETZNER_FI_N_1_WG_PUBLIC_KEY=
-HETZNER_FI_N_1_WG_PORT=
 OVH_NL_N_1_REALITY_PRIVATE_KEY=
 OVH_NL_N_1_REALITY_PUBLIC_KEY=
 OVH_NL_N_1_SHORT_ID=
 OVH_NL_N_1_WG_PRIVATE_KEY=
 OVH_NL_N_1_WG_PUBLIC_KEY=
-OVH_NL_N_1_WG_PORT=
 UNIVERSAL_PORT=443
 XHTTP_PORT=8443
 XHTTP_PATH=/api/v1/sync
@@ -91,12 +88,15 @@ check 'no leftover VLESS profiles beyond hosts' bash -c '[[ "$(ls build/mobile/*
 check 'make-wireguard-profiles runs' scripts/make-wireguard-profiles.sh
 for h in aeza-de-n-1 hetzner-fi-n-1 ovh-nl-n-1; do
   for u in owner parent1 parent2; do
-    check "$h WireGuard profile for $u" test -s "build/mobile/$h-wireguard-$u.txt"
+    check "$h WireGuard profile for $u" test -s "build/mobile/$h-wireguard-$u.conf"
   done
+  port="$(jq -r --arg h "$h" '.[$h].wireguardPort' hosts/hosts.json)"
+  check "$h WireGuard profile uses the host's server port" \
+    grep -qE "^Endpoint = [^:]+:${port}$" "build/mobile/$h-wireguard-owner.conf"
 done
-check 'WireGuard profile has PrivateKey' grep -q 'PrivateKey' build/mobile/aeza-de-n-1-wireguard-owner.txt
-check 'WireGuard profile has Endpoint' grep -q 'Endpoint' build/mobile/aeza-de-n-1-wireguard-owner.txt
-check 'WireGuard profiles per host per user (3*3=9)' bash -c '[[ "$(ls build/mobile/*-wireguard-*.txt 2>/dev/null | wc -l)" -eq 9 ]]'
+check 'WireGuard profile has PrivateKey' grep -q 'PrivateKey' build/mobile/aeza-de-n-1-wireguard-owner.conf
+check 'WireGuard profile has Endpoint' grep -q 'Endpoint' build/mobile/aeza-de-n-1-wireguard-owner.conf
+check 'WireGuard profiles per host per user (3*3=9)' bash -c '[[ "$(ls build/mobile/*-wireguard-*.conf 2>/dev/null | wc -l)" -eq 9 ]]'
 
 # nix-status.sh against a fake ssh that returns canned health output.
 cat > "$W/bin/ssh" <<'FAKE'

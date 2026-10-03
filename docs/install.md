@@ -44,8 +44,9 @@ Check:
 1. `.env.local` (git-ignored; `cp .env.example .env.local` if missing): set `<NAME>_ADDR` to the server's IP, where `<NAME>` is the host name upper-cased with `-` replaced by `_` (`aeza-de-n-1` -> `AEZA_DE_N_1_ADDR`).
 2. `hosts/hosts.json`: the key is the server name `<datacenter>-<country>-n-<number>` (it also becomes the profile name, `VPN aeza-de-n-1`); set `disk`:
    ```json
-   "aeza-de-n-1": {"disk": "/dev/vda", "system": "x86_64-linux"}
+   "aeza-de-n-1": {"disk": "/dev/vda", "system": "x86_64-linux", "wireguardPort": 51820}
    ```
+   `wireguardPort` is the single source for the server listener, firewall and generated WireGuard client profiles. It defaults to `51820` if omitted.
 3. `hosts/authorized_keys` must contain the public key you will log in with; `hosts/ssh_allowed_ips` the address(es) you will log in from. Both are checked at build time (an empty list refuses to build, so you cannot lock everyone out by accident).
 4. Commit the changes (the pre-commit hook runs the tests and requires a `CHANGELOG.md` entry and docs; see [nixos.md](nixos.md#tests-and-commit-policy)).
 

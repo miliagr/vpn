@@ -1,0 +1,20 @@
+@@ -30,13 +30,16 @@
+   
+   # Generate a client profile for each user
+   for user in "\${users[@]}"; do
+-    client_privkey="\$(wg genkey)"
+-    client_pubkey="\$(printf '%s' "\$client_privkey" | wg pubkey)"
++    priv_var="WG_CLIENT_\$(echo "\$user" | tr 'a-z' 'A-Z')_PRIV"
++    client_privkey="\${!priv_var:-}"
++    [[ -n "\$client_privkey" ]] || { echo "\$priv_var missing in .env.local; run generate-secrets.sh" >&2; exit 1; }
++    
++    client_ip="\$(jq -r --arg u "\$user" '.[$u].ip' "\$ROOT/hosts/wireguard_clients.json")"
+     
+     # WireGuard client config per user
+     profile_name="Family VPN \$host WireGuard (\$user)"
+-    conf_file="\$ROOT/build/mobile/\${host}-wireguard-\${user}.txt"
++    conf_file="\$ROOT/build/mobile/\${host}-wireguard-\${user}.conf"
+     
+     cat > "\$conf_file" <<CONFEOF
+ [Interface]
+ PrivateKey = \$client_privkey

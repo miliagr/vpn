@@ -1,0 +1,10 @@
+--- scripts/nix-push-secrets.sh
++++ scripts/nix-push-secrets.sh
+@@ -32,6 +32,7 @@
+ mv "$new" "$cur"
+ systemctl restart xray
+ systemctl is-active xray
++systemctl start wireguard-extract-key || true
++systemctl restart systemd-networkd || true
+ REMOTE
+ echo "Secrets applied on $name. Next: ./scripts/nix-check.sh $target"

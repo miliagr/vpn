@@ -5,7 +5,10 @@ Every commit must update this file (enforced by `.githooks/pre-commit`; enable w
 ## Unreleased
 
 ### Changed
-- `make-wireguard-profiles.sh` now generates per-user WireGuard profiles instead of a single shared profile per host. One profile per user (owner, parent1, parent2) per host. Each user gets a unique private key and deterministically allocated IP (10.0.0.2 + md5(user) % 252). Naming: `<host>-wireguard-<user>.txt/.png`. The script reads users from a hardcoded list; extend it if more family members are added.
+- WireGuard now takes each host's UDP port from `hosts/hosts.json` for the server listener, firewall and generated client profiles; the randomized `.env.local` port is removed.
+
+### Changed
+- `make-wireguard-profiles.sh` generates one `.conf`/QR profile per user and host. Client keys are stored in `.env.local`; stable client IPs are declared in `hosts/wireguard_clients.json`.
 
 ### Changed
 - Renamed service and paths from `family-vpn-*` to `vpn-*`: `family-vpn-health` → `vpn-health`, `/var/lib/family-vpn` → `/var/lib/vpn`, `/var/lib/family-vpn-metrics` → `/var/lib/vpn-metrics`, `family_vpn.prom` → `vpn.prom`, metrics `family_vpn_*` → `vpn_*`. Requires server reinstall.

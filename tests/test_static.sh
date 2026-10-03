@@ -15,6 +15,8 @@ check 'hosts.json is valid JSON' jq -e . hosts/hosts.json
 check 'host names follow <datacenter>-<country>-n-<number> (they become env prefixes and profile names)' \
   jq -e 'keys | all(test("^[a-z0-9]+-[a-z]{2}-n-[0-9]+$"))' hosts/hosts.json
 check 'every host has a disk' jq -e 'all(.[]; .disk | type == "string" and startswith("/dev/"))' hosts/hosts.json
+check 'WireGuard host ports are valid' \
+  jq -e 'all(.[]; (.wireguardPort // 51820) as $p | ($p | type) == "number" and $p >= 1 and $p <= 65535 and ($p | floor) == $p)' hosts/hosts.json
 check 'at least one host' jq -e 'length >= 1' hosts/hosts.json
 check 'ssh_allowed_ips lists at least one source' grep -Evq '^[[:space:]]*(#|$)' hosts/ssh_allowed_ips
 check 'ssh_allowed_ips has only IPs/CIDRs' bash -c '! grep -Ev "^[[:space:]]*(#|\$)|^[0-9a-fA-F:.]+(/[0-9]+)?\$" hosts/ssh_allowed_ips'
@@ -65,6 +67,7 @@ check 'no UUIDs in tracked files' bash -c '! git ls-files -z | xargs -0 grep -IE
 check 'no concrete vless:// links in tracked files' bash -c '! git ls-files -z | xargs -0 grep -IEq "vless://[0-9a-fA-F]"'
 check 'no private key blocks in tracked files' bash -c '! git ls-files -z | xargs -0 grep -IEq -- "-----BEGIN [A-Z ]*PRIVATE KEY"'
 check '.env.example leaves secrets empty' bash -c '! grep -E "^(VLESS_UUID|VPS[0-9]+_(REALITY_PRIVATE_KEY|REALITY_PUBLIC_KEY|SHORT_ID))=." .env.example'
+check '.env.example does not duplicate WireGuard port configuration' bash -c '! grep -Eq "^[A-Z0-9_]+_WG_PORT=" .env.example'
 # Nix modules: nothing monitoring-related may be opened in the firewall.
 check 'monitoring does not open firewall ports' bash -c '! grep -Eq "openFirewall *= *true" nix/monitoring.nix'
 check 'exporters bind to localhost' grep -q 'listenAddress = "127.0.0.1"' nix/monitoring.nix

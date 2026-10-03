@@ -1,0 +1,45 @@
+--- nix/wireguard.nix
++++ nix/wireguard.nix
+@@ -15,16 +15,20 @@
+     networking.wireguard.enable = true;
+     networking.wireguard.interfaces.wg0 = {
+       ips = [ "10.42.0.1/24" ];
+-      listenPort = cfg.wireguardPort;
+       mtu = 1280;
+       privateKeyFile = "/var/lib/vpn/wg-private-key";
+       peers = lib.mapAttrsToList (name: data: {
+         publicKey = data.publicKey;
+         allowedIPs = [ "${data.ip}/32" ];
+       }) clients;
++      
++      postSetup = ''
++        source ${cfg.secretsFile}
++        ${pkgs.wireguard-tools}/bin/wg set wg0 listen-port $WG_PORT
++      '';
+     };
+ 
+-    networking.firewall.allowedUDPPorts = [ cfg.wireguardPort ];
++    # Firewall port is opened dynamically below
+ 
+     systemd.services.wireguard-extract-key = {
+       description = "Extract WireGuard private key from secrets file";
+@@ -37,6 +41,20 @@
+         RemainAfterExit = "yes";
+       };
+     };
++
++    systemd.services.wireguard-firewall = {
++      description = "Open WireGuard port dynamically";
++      wantedBy = [ "network-pre.target" ];
++      before = [ "wg-quick-wg0.service" "systemd-networkd.service" ];
++      unitConfig.ConditionPathExists = cfg.secretsFile;
++      path = [ pkgs.iptables ];
++      serviceConfig = {
++        Type = "oneshot";
++        User = "root";
++        ExecStart = "${pkgs.bash}/bin/bash -c 'source ${cfg.secretsFile} && iptables -I nixos-fw -p udp -m udp --dport $WG_PORT -j nixos-fw-accept'";
++        RemainAfterExit = "yes";
++      };
++    };
+   };
+ }
