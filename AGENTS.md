@@ -35,6 +35,7 @@ With every commit:
 - Run `./tests/run.sh`.
 - Update all documentation the change touches (`README.md`, `docs/`, `AGENTS.md`, `CLAUDE.md`, `CODEX_TASKS.md`) and add a `CHANGELOG.md` entry. Docs describe only what exists now; rewrite or delete outdated text.
 - Delete what became unnecessary: scripts, tests, config options, env variables, doc sections, dead references. Git history is the archive; do not keep code "for reference".
+- Write an ADR for every serious fix or change: a new `docs/adr/NNNN-short-title.md` in the same commit, in the format from `docs/adr/README.md` (context and root cause, decision, alternatives, consequences). Serious means a fix for a user-visible failure, a change to network behaviour (firewall, NAT, MTU/MSS, DNS, routing, ports, transports), to a security invariant or secret handling, to the deployment flow, or anything that needs a reinstall or new client profiles. Find the root cause before writing the fix; an ADR that only describes the symptom is not enough.
 
 `.githooks/pre-commit` enforces the tests, the changelog and docs for behaviour changes (`./scripts/install-hooks.sh` enables it); `tests/test_static.sh` fails on scripts that no document mentions and on docs that mention missing scripts. Do not bypass with `--no-verify`.
 
@@ -64,7 +65,7 @@ Each VPS should have:
 - Xray-core managed by systemd (on NixOS: the `xray` unit from `nix/xray.nix`).
 - `443/tcp` open for universal VLESS/REALITY/Vision.
 - `8443/tcp` open for Android XHTTP fallback.
-- SSH open only to the source addresses in `hosts/ssh_allowed_ips` (NixOS firewall).
+- SSH open only to the source addresses in `hosts/ssh_allowed_ips` and, inside the WireGuard tunnel, to the clients marked `"ssh": true` in `hosts/wireguard_clients.json` (NixOS firewall).
 - No unnecessary listening services.
 
 When changing firewall or SSH settings, never lock out SSH: `hosts/ssh_allowed_ips` must always contain the address the owner connects from, and a change to it needs the owner's go-ahead (recovery is only through the provider console).

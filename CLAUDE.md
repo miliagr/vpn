@@ -31,13 +31,14 @@ Tests: `./tests/run.sh` (static checks, secret hygiene, script runs against a fa
 - Stay within scope: no new services, UI, telemetry, or control plane (see "Changes to avoid" in AGENTS.md).
 
 ## Security invariants (do not weaken without asking)
-- Inbound: 443 and 8443 TCP for everyone; SSH (22) only from `hosts/ssh_allowed_ips`. Never open 22 globally, and never empty that list (it would lock everyone out). Deploying a change to it needs the user's go-ahead, because a wrong address locks them out until they use the provider console. Monitoring (node_exporter 9100, Xray metrics 11111) stays on 127.0.0.1; never open it in the firewall or set `openFirewall = true`.
+- Inbound: 443 and 8443 TCP and the WireGuard UDP port for everyone; SSH (22) only from `hosts/ssh_allowed_ips` and, inside the WireGuard tunnel, from clients marked `"ssh": true` in `hosts/wireguard_clients.json` (the `admin` client). Never open 22 globally or to all WireGuard clients, and never empty that list (it would lock everyone out). Deploying a change to it needs the user's go-ahead, because a wrong address locks them out until they use the provider console. Monitoring (node_exporter 9100, Xray metrics 11111) stays on 127.0.0.1; never open it in the firewall or set `openFirewall = true`.
 - The Xray routing rule blackholing private/loopback ranges must stay, otherwise VPN clients can reach those localhost ports.
 - No root SSH login, no passwords, no access logs, no third-party monitoring/alerting service. `tests/test_nix.sh` asserts these.
 
 ## Tests, documentation and cleanup (every commit)
 
 - **Documentation:** update every doc the change touches (`README.md`, `docs/`, `AGENTS.md`, `CLAUDE.md`, `CODEX_TASKS.md`) in the same commit, and add a `CHANGELOG.md` entry. Docs describe only what exists now: rewrite or delete outdated text instead of marking it "legacy".
+- **ADR:** every serious fix or change (definition and format in `docs/adr/README.md`) gets a new `docs/adr/NNNN-short-title.md` in the same commit. Propose the ADR text together with the fix, before deploying anything.
 - **Cleanup:** delete what the change made unnecessary in the same commit: scripts, test cases, config options, env variables, doc sections, dead references. Do not keep code "for reference"; git history is the archive. `tests/test_static.sh` fails on scripts that no document mentions and on docs that mention missing scripts.
 
 - Run `./tests/run.sh` before proposing a commit; add or extend a test for each behaviour change in `scripts/`, `nix/`, `server/`, or `hosts/`. Tests must never touch real servers or read `.env.local`.

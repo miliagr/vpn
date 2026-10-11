@@ -87,7 +87,7 @@ check 'no leftover VLESS profiles beyond hosts' bash -c '[[ "$(ls build/mobile/*
 
 check 'make-wireguard-profiles runs' scripts/make-wireguard-profiles.sh
 for h in aeza-de-n-1 hetzner-fi-n-1 ovh-nl-n-1; do
-  for u in owner parent1 parent2; do
+  for u in owner parent1 parent2 admin; do
     check "$h WireGuard profile for $u" test -s "build/mobile/$h-wireguard-$u.conf"
   done
   port="$(jq -r --arg h "$h" '.[$h].wireguardPort' hosts/hosts.json)"
@@ -95,8 +95,18 @@ for h in aeza-de-n-1 hetzner-fi-n-1 ovh-nl-n-1; do
     grep -qE "^Endpoint = [^:]+:${port}$" "build/mobile/$h-wireguard-owner.conf"
 done
 check 'WireGuard profile has PrivateKey' grep -q 'PrivateKey' build/mobile/aeza-de-n-1-wireguard-owner.conf
+check 'WireGuard profile sets the tunnel MTU of nix/wireguard.nix' \
+  grep -qx "MTU = $(sed -n 's/^  mtu = \([0-9]*\);$/\1/p' "$ROOT/nix/wireguard.nix")" build/mobile/aeza-de-n-1-wireguard-owner.conf
+check 'WireGuard profile routes IPv6 into the tunnel (no bypass)' grep -qx 'AllowedIPs = 0.0.0.0/0, ::/0' build/mobile/aeza-de-n-1-wireguard-owner.conf
+check 'WireGuard profile has the ULA address matching its IPv4 address' \
+  grep -qx "Address = $(jq -r '.owner.ip' hosts/wireguard_clients.json)/24, fd42:42:42::$(jq -r '.owner.ip | split(".") | last' hosts/wireguard_clients.json)/128" build/mobile/aeza-de-n-1-wireguard-owner.conf
 check 'WireGuard profile has Endpoint' grep -q 'Endpoint' build/mobile/aeza-de-n-1-wireguard-owner.conf
-check 'WireGuard profiles per host per user (3*3=9)' bash -c '[[ "$(ls build/mobile/*-wireguard-*.conf 2>/dev/null | wc -l)" -eq 9 ]]'
+check 'WireGuard profiles per host per client (3*4=12)' bash -c '[[ "$(ls build/mobile/*-wireguard-*.conf 2>/dev/null | wc -l)" -eq 12 ]]'
+check 'only the admin client is marked for SSH' bash -c '[[ "$(jq -c "[to_entries[] | select(.value.ssh == true) | .key]" hosts/wireguard_clients.json)" == "[\"admin\"]" ]]'
+check 'admin profile routes only the server tunnel address' grep -qx 'AllowedIPs = 10.42.0.1/32' build/mobile/aeza-de-n-1-wireguard-admin.conf
+check 'admin profile does not take over DNS' bash -c '! grep -q "^DNS" build/mobile/aeza-de-n-1-wireguard-admin.conf'
+check 'admin profile sets the tunnel MTU' grep -qx 'MTU = 1280' build/mobile/aeza-de-n-1-wireguard-admin.conf
+check 'every WireGuard client has its own key and address' bash -c '[[ "$(jq "[.[].publicKey] | unique | length" hosts/wireguard_clients.json)" == 4 && "$(jq "[.[].ip] | unique | length" hosts/wireguard_clients.json)" == 4 ]]'
 
 # nix-status.sh against a fake ssh that returns canned health output.
 cat > "$W/bin/ssh" <<'FAKE'

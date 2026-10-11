@@ -34,7 +34,9 @@ if [[ ! -f "$CLIENTS_FILE" ]]; then
   echo "{}" > "$CLIENTS_FILE"
 fi
 
-users=("owner" "parent1" "parent2")
+# Append new clients at the end: the position decides the tunnel address (10.42.0.2, .3, ...).
+# "admin" is the SSH-only client (see make-wireguard-profiles.sh and nix/wireguard.nix).
+users=("owner" "parent1" "parent2" "admin")
 ip_counter=2
 for user in "${users[@]}"; do
   priv_var="WG_CLIENT_$(echo "$user" | tr 'a-z' 'A-Z')_PRIV"
@@ -46,7 +48,7 @@ for user in "${users[@]}"; do
     # Add to clients JSON
     ip="10.42.0.$ip_counter"
     tmp="$(mktemp)"
-    jq --arg u "$user" --arg p "$pub_val" --arg ip "$ip" '.[$u] = {publicKey: $p, ip: $ip}' "$CLIENTS_FILE" > "$tmp"
+    jq --arg u "$user" --arg p "$pub_val" --arg ip "$ip" '.[$u] = {publicKey: $p, ip: $ip} + (if $u == "admin" then {ssh: true} else {} end)' "$CLIENTS_FILE" > "$tmp"
     mv "$tmp" "$CLIENTS_FILE"
   fi
   ((ip_counter++))

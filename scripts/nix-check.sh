@@ -14,7 +14,7 @@ ss -lnt | awk 'NR==1 || /:443[[:space:]]|:8443[[:space:]]/'
 echo '== firewall =='
 systemctl is-active firewall
 echo '== ssh policy =='
-sudo sshd -T 2>/dev/null | grep -E '^(permitrootlogin|passwordauthentication|allowusers) '
+sudo sshd -T 2>/dev/null | grep -iE '^(permitrootlogin|passwordauthentication|allowusers) '
 echo '== all listening sockets =='
 ss -lntuH | awk '{print $1, $5}'
 echo '== recent xray log =='

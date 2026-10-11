@@ -10,5 +10,10 @@
   "parent2": {
     "publicKey": "t+Bq3hyufmRVt7musz76TK9vrnhC8IHnAYHVZeZNcE8=",
     "ip": "10.42.0.4"
+  },
+  "admin": {
+    "publicKey": "0/FMtbJfhCOV2B5rcsF5+Ucq6zlAmbXHhpEFk1EFwlQ=",
+    "ip": "10.42.0.5",
+    "ssh": true
   }
 }

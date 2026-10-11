@@ -24,10 +24,15 @@ eq 'firewall enabled' networking.firewall.enable 'true'
 eq 'globally open TCP ports are only the VPN ports (SSH is not among them)' networking.firewall.allowedTCPPorts '[443,8443]'
 allowed="$(grep -Ev '^[[:space:]]*(#|$)' hosts/ssh_allowed_ips)"
 rules="$(nix eval --raw ".#nixosConfigurations.$h.config.networking.firewall.extraCommands" 2>/dev/null)"
-n_rules="$(grep -c 'dport 22 -j nixos-fw-accept' <<<"$rules")"
+n_rules="$(grep -c -- '-A nixos-fw -p tcp -s [^ ]* --dport 22 -j nixos-fw-accept' <<<"$rules")"
 [[ "$n_rules" == "$(wc -l <<<"$allowed" | tr -d ' ')" && -n "$allowed" ]] && pass 'one SSH accept rule per allowed source' || fail "SSH firewall rules ($n_rules) do not match hosts/ssh_allowed_ips"
 while IFS= read -r ip; do grep -q -- "-s $ip --dport 22" <<<"$rules" && pass "SSH allowed only from $ip" || fail "no SSH rule for $ip"; done <<<"$allowed"
-[[ "$(grep -c -- '--dport 22' <<<"$rules")" == "$n_rules" && "$rules" != *"-A nixos-fw -p tcp --dport 22"* ]] && pass 'no unconditional SSH rule' || fail 'unconditional SSH rule present'
+wg_ssh="$(jq -r '.[] | select(.ssh == true) | .ip' hosts/wireguard_clients.json)"
+n_wg_ssh="$(grep -c . <<<"$wg_ssh" || true)"
+[[ "$(grep -c -- '--dport 22' <<<"$rules")" == "$((n_rules + n_wg_ssh))" && "$rules" != *"-A nixos-fw -p tcp --dport 22"* ]] && pass 'no unconditional SSH rule' || fail 'unconditional SSH rule present'
+while IFS= read -r ip; do [[ -z "$ip" ]] && continue; grep -q -- "-A nixos-fw -i wg0 -p tcp -s $ip --dport 22 -j nixos-fw-accept" <<<"$rules" && pass "SSH through the tunnel allowed for the ssh client $ip" || fail "no tunnel SSH rule for $ip"; done <<<"$wg_ssh"
+while IFS= read -r ip; do grep -q -- "-s $ip --dport 22" <<<"$rules" && fail "SSH allowed for ordinary WireGuard client $ip" || pass "no SSH for ordinary WireGuard client $ip"; done < <(jq -r '.[] | select(.ssh != true) | .ip' hosts/wireguard_clients.json)
+[[ "$(grep -c -- '-i wg0 .*--dport 22' <<<"$rules")" == "$n_wg_ssh" ]] && pass 'tunnel SSH rules exist only for ssh clients' || fail 'unexpected SSH rule on wg0'
 eq 'WireGuard port comes from the host configuration' vpn.wireguardPort "$(jq -r --arg h "$h" '.[$h].wireguardPort // 51820' hosts/hosts.json)"
 eq 'fail2ban enabled' services.fail2ban.enable 'true'
 eq 'node exporter on localhost' services.prometheus.exporters.node.listenAddress '"127.0.0.1"'
@@ -35,6 +40,16 @@ eq 'xray runs as a dynamic user' systemd.services.xray.serviceConfig.DynamicUser
 eq 'WireGuard enabled' networking.wireguard.enable 'true'
 eq 'WireGuard listen port matches host configuration' networking.wireguard.interfaces.wg0.listenPort "$(jq -r --arg h "$h" '.[$h].wireguardPort // 51820' hosts/hosts.json)"
 eq 'WireGuard UDP firewall port matches host configuration' networking.firewall.allowedUDPPorts "[$(jq -r --arg h "$h" '.[$h].wireguardPort // 51820' hosts/hosts.json)]"
+eq 'WireGuard tunnel MTU' networking.wireguard.interfaces.wg0.mtu '1280'
+eq 'WireGuard interface has the ULA address' networking.wireguard.interfaces.wg0.ips '["10.42.0.1/24","fd42:42:42::1/64"]'
+wg_allowed="$(nix eval --json ".#nixosConfigurations.$h.config.networking.wireguard.interfaces.wg0.peers" 2>/dev/null | jq -c '[.[].allowedIPs] | sort')"
+wg_expected="$(jq -c '[.[] | [.ip + "/32", "fd42:42:42::" + (.ip | split(".") | last) + "/128"]] | sort' hosts/wireguard_clients.json)"
+[[ -n "$wg_allowed" && "$wg_allowed" == "$wg_expected" ]] && pass 'every WireGuard peer is allowed exactly its IPv4 and ULA address' || fail "WireGuard peer allowedIPs: $wg_allowed, expected $wg_expected"
+for dir in i o; do
+  [[ "$(grep -c -- "-A FORWARD -$dir wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu" <<<"$rules")" == 1 ]] && pass "TCP MSS clamped on wg0 (-$dir)" || fail "no TCP MSS clamp rule for -$dir wg0"
+done
+eq 'tunnelled IPv6 is rejected, not dropped (forwarding on)' 'boot.kernel.sysctl."net.ipv6.conf.all.forwarding"' '1'
+eq 'no IPv6 NAT' networking.nat.enableIPv6 'false'
 eq 'NAT enabled' networking.nat.enable 'true'
 eq 'NAT internal interfaces includes wg0' networking.nat.internalInterfaces '["wg0"]'
 while IFS= read -r host; do

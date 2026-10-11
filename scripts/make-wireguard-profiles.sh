@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Generate per-user WireGuard client configurations as .conf and .png QR codes.
-# One profile per user per host (owner, parent1, parent2, etc.).
+# One profile per client in hosts/wireguard_clients.json per host. Clients marked "ssh": true get a profile
+# that routes only the server's tunnel address (for `ssh admin@10.42.0.1`), everyone else a full tunnel.
 # Usage: make-wireguard-profiles.sh [host-name...]  (default: every host in hosts/hosts.json)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -13,8 +14,8 @@ command -v qrencode >/dev/null || { echo 'qrencode is required for PNG QR codes'
 
 mkdir -p "$ROOT/build/mobile"
 
-# User list (owner, parent1, parent2, ...)
-users=("owner" "parent1" "parent2")
+users=(); while IFS= read -r u; do users+=("$u"); done < <(jq -r 'keys_unsorted[]' "$ROOT/hosts/wireguard_clients.json")
+[[ ${#users[@]} -gt 0 ]] || { echo 'hosts/wireguard_clients.json has no clients; run ./scripts/generate-secrets.sh' >&2; exit 1; }
 
 if [[ $# -gt 0 ]]; then hosts=("$@"); else hosts=(); while IFS= read -r h; do hosts+=("$h"); done < <(jq -r 'keys_unsorted[]' "$ROOT/hosts/hosts.json"); fi
 
@@ -41,23 +42,41 @@ for host in "${hosts[@]}"; do
     [[ -n "$client_privkey" ]] || { echo "$priv_var missing in .env.local; run generate-secrets.sh" >&2; exit 1; }
     
     client_ip="$(jq -r --arg u "$user" '.[$u].ip' "$ROOT/hosts/wireguard_clients.json")"
+    # Same mapping as nix/wireguard.nix: the IPv4 last octet inside the tunnel's ULA prefix.
+    client_ip6="fd42:42:42::${client_ip##*.}"
     
     # WireGuard client config per user
     profile_name="Family VPN $host WireGuard ($user)"
     conf_file="$ROOT/build/mobile/${host}-wireguard-${user}.conf"
     
-    cat > "$conf_file" <<CONFEOF
+    if [[ "$(jq -r --arg u "$user" '.[$u].ssh // false' "$ROOT/hosts/wireguard_clients.json")" == true ]]; then
+      cat > "$conf_file" <<CONFEOF
 [Interface]
 PrivateKey = $client_privkey
-Address = $client_ip/24
-DNS = 8.8.8.8, 1.1.1.1
+Address = $client_ip/32
+MTU = 1280
 
 [Peer]
 PublicKey = $server_pubkey
 Endpoint = $server_addr:$server_wg_port
-AllowedIPs = 0.0.0.0/0
+AllowedIPs = 10.42.0.1/32
 PersistentKeepalive = 25
 CONFEOF
+    else
+      cat > "$conf_file" <<CONFEOF
+[Interface]
+PrivateKey = $client_privkey
+Address = $client_ip/24, $client_ip6/128
+DNS = 8.8.8.8, 1.1.1.1
+MTU = 1280
+
+[Peer]
+PublicKey = $server_pubkey
+Endpoint = $server_addr:$server_wg_port
+AllowedIPs = 0.0.0.0/0, ::/0
+PersistentKeepalive = 25
+CONFEOF
+    fi
     
     chmod 600 "$conf_file"
     echo "Generated: $conf_file"
