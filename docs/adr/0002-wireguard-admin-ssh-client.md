@@ -16,7 +16,7 @@ Checked on `aeza-de-n-1` and on the laptop (2026-10-11, read-only):
 
 - A fourth client, `admin`, with its own key and the address `10.42.0.5`, marked `"ssh": true` in `hosts/wireguard_clients.json`.
 - `nix/wireguard.nix` adds one firewall rule per such client: TCP 22 accepted on `wg0` from exactly that tunnel address. fail2ban ignores it, like the addresses in `hosts/ssh_allowed_ips`. Other WireGuard clients (the phones) still cannot reach port 22.
-- Its profile is a split tunnel: `AllowedIPs = 10.42.0.1/32`, no `DNS`. Only `ssh admin@10.42.0.1` goes through it; the laptop's other traffic and any other VPN on it are untouched.
+- Its profile is a split tunnel with no `DNS`: `AllowedIPs` holds the server's tunnel address `10.42.0.1/32` and the server's public address. Both `ssh admin@10.42.0.1` and `ssh admin@<public address>` go through it, so the scripts here, which use the public address from `.env.local`, work with the tunnel on. The laptop's other traffic and any other VPN on it are untouched. (The first version routed only `10.42.0.1`; SSH to the public address then left the laptop directly and was dropped by the allowlist.)
 - `make-wireguard-profiles.sh` takes the client list from `hosts/wireguard_clients.json` instead of a second hard-coded list.
 
 SSH still needs the key from `hosts/authorized_keys`; the WireGuard key only makes the port reachable.
@@ -32,7 +32,8 @@ SSH still needs the key from `hosts/authorized_keys`; the WireGuard key only mak
 
 - This widens who can reach port 22: before, two public addresses; now also the holder of the `admin` WireGuard key. `build/mobile/<host>-wireguard-admin.conf` is therefore an admin credential: keep it only on the owner's laptop.
 - Deploy with `./scripts/nix-deploy.sh <host> admin@<ip>` (the owner's go-ahead is required: it changes SSH access). The existing public allowlist is unchanged, so access cannot be lost by this change.
-- On the laptop: import `build/mobile/<host>-wireguard-admin.conf` into the WireGuard app, remove the `owner` tunnel from the laptop (one key, one device), then `ssh admin@10.42.0.1`. The first connection asks to confirm the host key for the new address; it is the same key as for the public address.
-- A deploy over this tunnel restarts the network on the server; the session normally survives, but the public route is the safer one for deploys.
+- On the laptop: import `build/mobile/<host>-wireguard-admin.conf` into the WireGuard app, remove the `owner` tunnel from the laptop (one key, one device), then `ssh admin@<public address>` or `ssh admin@10.42.0.1`. The first connection to `10.42.0.1` asks to confirm the host key for the new address; it is the same key as for the public address.
+- With the tunnel on, everything the laptop sends to the server's public address goes through the tunnel, including `nix-probe.sh`: it then proves that Xray works, not that the ports are reachable from outside.
+- A deploy over this tunnel restarts the network on the server and resets the WireGuard session; the client re-handshakes within seconds, and a deploy that breaks WireGuard leaves the public allowlist as the way back in.
 - Verify: `sudo iptables -S nixos-fw | grep 'dport 22'` on the server shows the two public rules and one `-i wg0 -s 10.42.0.5` rule; `ssh admin@10.42.0.1 true` works from the laptop with the tunnel on; `./scripts/nix-check.sh`, `./scripts/nix-status.sh <host>`.
 - Roll back: remove the `admin` entry (or its `ssh` flag) from `hosts/wireguard_clients.json` and deploy.

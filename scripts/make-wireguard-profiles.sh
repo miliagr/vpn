@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Generate per-user WireGuard client configurations as .conf and .png QR codes.
 # One profile per client in hosts/wireguard_clients.json per host. Clients marked "ssh": true get a profile
-# that routes only the server's tunnel address (for `ssh admin@10.42.0.1`), everyone else a full tunnel.
+# that routes only the server (its tunnel address and its public address, so `ssh admin@<server address>` and
+# the scripts here work with the tunnel on), everyone else a full tunnel.
 # Usage: make-wireguard-profiles.sh [host-name...]  (default: every host in hosts/hosts.json)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -50,6 +51,8 @@ for host in "${hosts[@]}"; do
     conf_file="$ROOT/build/mobile/${host}-wireguard-${user}.conf"
     
     if [[ "$(jq -r --arg u "$user" '.[$u].ssh // false' "$ROOT/hosts/wireguard_clients.json")" == true ]]; then
+      ssh_allowed_ips="10.42.0.1/32"
+      [[ "$server_addr" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && ssh_allowed_ips+=", $server_addr/32"
       cat > "$conf_file" <<CONFEOF
 [Interface]
 PrivateKey = $client_privkey
@@ -59,7 +62,7 @@ MTU = 1280
 [Peer]
 PublicKey = $server_pubkey
 Endpoint = $server_addr:$server_wg_port
-AllowedIPs = 10.42.0.1/32
+AllowedIPs = $ssh_allowed_ips
 PersistentKeepalive = 25
 CONFEOF
     else

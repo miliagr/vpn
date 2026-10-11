@@ -5,7 +5,7 @@ Every commit must update this file (enforced by `.githooks/pre-commit`; enable w
 ## Unreleased
 
 ### Added
-- WireGuard client `admin` for SSH to the server through the tunnel (`ssh admin@10.42.0.1`): own key, address `10.42.0.5`, split-tunnel profile `build/mobile/<host>-wireguard-admin.conf`. Port 22 is accepted on `wg0` only from clients marked `"ssh": true` in `hosts/wireguard_clients.json`; the phones' clients still cannot reach it. `make-wireguard-profiles.sh` now reads the client list from that file. One WireGuard key works on one device at a time, so the laptop must not share the `owner` profile with the phone. See `docs/adr/0002-wireguard-admin-ssh-client.md`.
+- WireGuard client `admin` for SSH to the server through the tunnel (`ssh admin@10.42.0.1`): own key, address `10.42.0.5`, split-tunnel profile `build/mobile/<host>-wireguard-admin.conf` that routes the server's tunnel address and its public address, so `ssh admin@<public address>` and the scripts work with the tunnel on. Port 22 is accepted on `wg0` only from clients marked `"ssh": true` in `hosts/wireguard_clients.json`; the phones' clients still cannot reach it. `make-wireguard-profiles.sh` now reads the client list from that file. One WireGuard key works on one device at a time, so the laptop must not share the `owner` profile with the phone. See `docs/adr/0002-wireguard-admin-ssh-client.md`.
 
 ### Fixed
 - `nix-check.sh` stopped with exit 1 at the SSH policy step: the installed OpenSSH prints `sshd -T` keys capitalised (`PermitRootLogin`), and the check matched lower case only. It now matches case-insensitively.

@@ -103,7 +103,7 @@ check 'WireGuard profile has the ULA address matching its IPv4 address' \
 check 'WireGuard profile has Endpoint' grep -q 'Endpoint' build/mobile/aeza-de-n-1-wireguard-owner.conf
 check 'WireGuard profiles per host per client (3*4=12)' bash -c '[[ "$(ls build/mobile/*-wireguard-*.conf 2>/dev/null | wc -l)" -eq 12 ]]'
 check 'only the admin client is marked for SSH' bash -c '[[ "$(jq -c "[to_entries[] | select(.value.ssh == true) | .key]" hosts/wireguard_clients.json)" == "[\"admin\"]" ]]'
-check 'admin profile routes only the server tunnel address' grep -qx 'AllowedIPs = 10.42.0.1/32' build/mobile/aeza-de-n-1-wireguard-admin.conf
+check 'admin profile routes only the server (tunnel and public address)' grep -qx 'AllowedIPs = 10.42.0.1/32, 100.64.0.1/32' build/mobile/aeza-de-n-1-wireguard-admin.conf
 check 'admin profile does not take over DNS' bash -c '! grep -q "^DNS" build/mobile/aeza-de-n-1-wireguard-admin.conf'
 check 'admin profile sets the tunnel MTU' grep -qx 'MTU = 1280' build/mobile/aeza-de-n-1-wireguard-admin.conf
 check 'every WireGuard client has its own key and address' bash -c '[[ "$(jq "[.[].publicKey] | unique | length" hosts/wireguard_clients.json)" == 4 && "$(jq "[.[].ip] | unique | length" hosts/wireguard_clients.json)" == 4 ]]'
